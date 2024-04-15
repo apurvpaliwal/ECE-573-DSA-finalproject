@@ -13,33 +13,51 @@ using namespace std;
 
 
 class Graph {
-
-    
-
     
     public:
 
-        Graph(uint64_t V): numNodes(V), adjList(V) {
-
-            adjMatrix.resize(numNodes, vector<uint64_t>(numNodes, 0));
-            fill(adjMatrix.begin(), adjMatrix.end(), vector<uint64_t>(numNodes, INF));
-            generateRandomGraph(10,1,10);
+        Graph(uint64_t V): numNodes(V) {
 
         }
+
+        virtual ~Graph() {}
+
+        virtual void updateEdge(uint64_t srcNodeID, uint64_t destNodeID, float weight) = 0;
+
+        virtual void addNode() = 0;
+
+        virtual  void removeNode(uint64_t srcNodeID) = 0;
+
+        virtual void addEdge(uint64_t srcNodeID, uint64_t destNodeID, float weight) = 0;
+
+        virtual void printGraph() = 0;
+
+        virtual void generateRandomGraph(float maxWeight, float minWeight, uint64_t density) = 0;
+        
+        
+        
+    protected:
+        uint64_t numNodes;
+
+        float INF = numeric_limits<float>::infinity();
+
+};
+
+class GraphAdjMatrix: public Graph {
+
+    public:
+
+        GraphAdjMatrix(uint64_t V): Graph(V) {
+
+            adjMatrix.resize(numNodes, vector<float>(numNodes, INF));
+        }
+
+        vector<vector<float>> adjMatrix;
+
         
 
-        vector< list< pair<uint64_t, uint64_t> > > adjList;
-        vector<vector<uint64_t>> adjMatrix;
-
-        // addition for Adjancency List
-        // void addNode( uint64_t srcNodeID, uint64_t destNodeID, uint64_t weight) {
-
-        //     adjList[srcNodeID].push_back(make_pair(destNodeID, weight));
-            
-        // }
-
         // addition for Adjancency Matrix
-        void updateWeight(uint64_t srcNodeID, uint64_t destNodeID, uint64_t weight) {
+        void updateEdge(uint64_t srcNodeID, uint64_t destNodeID, float weight) override {
             if (srcNodeID >= numNodes || destNodeID >= numNodes ) {
                 cout<<"Invalid Node ID"<<endl;
                 return;
@@ -55,36 +73,50 @@ class Graph {
             
         }
 
-        void addNode( uint64_t srcNodeID, uint64_t destNodeID, uint64_t weight) {
-            if (srcNodeID >= numNodes || destNodeID >= numNodes ) {
-                numNodes = max(srcNodeID, destNodeID) + 1;
-                adjMatrix.resize(numNodes, vector<uint64_t>(numNodes, 0));
-                for(int i=0; i < adjMatrix.size(); i++) {
-                    adjMatrix[i].resize(numNodes, 0);
-                }
-                adjMatrix[srcNodeID][destNodeID] = weight;
-            }
-            else{
-                cout<<"Node already exists"<<endl;
-            }
+        void addNode() override {
+            numNodes+=1;
+            adjMatrix.resize(numNodes, vector<float>(numNodes, INF));
             
         }
 
-        void removeNode(uint64_t srcNodeID) {
+        void addEdge(uint64_t srcNodeID, uint64_t destNodeID, float weight) override {
+
+            if (srcNodeID >= numNodes || destNodeID >= numNodes ) {
+
+                // Not Needed for Adjacency Matrix as addition of nodeID grater than numNodes is not efficient
+                // numNodes = max(srcNodeID, destNodeID) + 1;
+                // adjMatrix.resize(numNodes, vector<float>(numNodes, INF));
+                // for(int i=0; i < adjMatrix.size(); i++) {
+                //     adjMatrix[i].resize(numNodes, INF);
+                // }
+                // adjMatrix[srcNodeID][destNodeID] = weight;
+                cout<<"Invalid Node ID"<<endl;
+                return;
+            }
+            if(adjMatrix[srcNodeID][destNodeID] != INF){
+                cout<<"Edge already exists"<<endl;
+                return;
+            }
+            
+            adjMatrix[srcNodeID][destNodeID] = weight;
+        }
+
+        void removeNode(uint64_t srcNodeID) override {
             if (srcNodeID >= numNodes ) {
                 cout<<"Invalid Node ID"<<endl;
                 return;
             }
             for(int i=0; i < adjMatrix.size(); i++) {
-                adjMatrix[srcNodeID][i] = 0;
+                adjMatrix[srcNodeID][i] = INF;
             }
             for (int i =0; i < adjMatrix.size(); i++) {
-                adjMatrix[i][srcNodeID] = 0;
+                adjMatrix[i][srcNodeID] = INF;
             }
 
+            
             // remove last element and shrink the graph
             for(int i = 0; i < adjMatrix.size(); i++) {
-                if (adjMatrix[i][adjMatrix.size()-1] != 0){
+                if (adjMatrix[i][adjMatrix.size()-1] != INF){
                     break;
                 }
                 else{
@@ -92,33 +124,24 @@ class Graph {
                 }
 
             }
+            numNodes -=1;
         }
 
-        // print Adjanceny List Graph
-        // void printGraph() {
+        
 
-        //     for(int i = 0; i < numNodes; i++) {
-        //         cout<<i<<" -> ";
-        //         for(auto it = adjList[i].begin(); it != adjList[i].end(); it++) {
-        //             cout<<(*it).first<<"("<<(*it).second<<") ";
-        //         }
-        //         cout<<endl;
-        //     }
-        // }
-
-        void generateRandomGraph(uint64_t maxWeight, uint64_t minWeight, uint64_t density) {
+        void generateRandomGraph(float maxWeight, float minWeight, uint64_t density) override {
 
             srand(time(0));
             for(int i = 0; i < numNodes; i++) {
                 for(int j = 0; j < numNodes; j++) {
-                    if(i != j && ( (rand() % (maxWeight-minWeight+1) )+minWeight < density ) ) {
-                    adjMatrix[i][j] = (rand() % (maxWeight-minWeight+1) ) + minWeight;
+                    if(i != j && ( static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * (maxWeight - minWeight) + minWeight < density ) ) {
+                    adjMatrix[i][j] = static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * (maxWeight - minWeight) + minWeight;
                 }
             }
         }
         }
 
-        void printGraph() {
+        void printGraph() override {
 
             for(int i = 0; i < numNodes; i++) {
                 cout<< i << " -> ";
@@ -131,26 +154,130 @@ class Graph {
                 cout<<endl;
             }
         }
+};
+
+class GraphAdjList: public Graph {
+
+    public:
+        vector< list< pair<uint64_t, float> > > adjList;
+        GraphAdjList(uint64_t numNodes): Graph(numNodes) {
+
+            adjList.resize(numNodes);
+
+        }
+        // addition for Adjancency List
+        void addEdge( uint64_t srcNodeID, uint64_t destNodeID, float weight) override {
+
+            auto it = std::find_if(adjList[srcNodeID].begin(), adjList[srcNodeID].end(),
+            [destNodeID](const std::pair<uint64_t, float>& p) { return p.first == destNodeID; });
+
+            if (it != adjList[srcNodeID].end()) {
+                cout<<"Edge already exists"<<endl;
+                return;
+            }
+            
+            adjList[srcNodeID].push_back(make_pair(destNodeID, weight));
+             
+        }
+
+        void generateRandomGraph(float maxWeight, float minWeight, uint64_t density) override {
+
+            srand(time(0));
+            for (uint64_t i = 0; i < numNodes; ++i) {
+                for (uint64_t j = 0; j < numNodes; ++j) {
+                // Skip self-loops and already existing edges
+                if (i == j || adjList[i].size() >= density || adjList[j].size() >= density || rand() % 2 == 0)
+                    continue;
+
+                // Generate a random weight in the specified range
+                float weight = minWeight + static_cast<float>(rand()) / static_cast<float>(RAND_MAX / (maxWeight - minWeight));
+
+                // Add the edge to the adjacency list
+                adjList[i].push_back(std::make_pair(j, weight));
+                }
+            }
         
-        private:
-            uint64_t numNodes;
+        }
 
-            uint64_t INF = numeric_limits<uint64_t>::infinity();
+        void addNode() override {
 
+            numNodes+=1;
+            adjList.resize(numNodes);
+            
+        }
+
+        void updateEdge(uint64_t srcNodeID, uint64_t destNodeID, float weight) override {
+            
+            auto it = std::find_if(adjList[srcNodeID].begin(), adjList[srcNodeID].end(),
+            [destNodeID](const std::pair<int, float>& p) { return p.first == destNodeID; });
+
+            if (it != adjList[srcNodeID].end()) {
+                it->second = weight; // Assuming weight is the new value for the second element
+            } 
+            else {
+                cout<<"Node does not exist"<<endl;
+                return;
+            }
+            
+        }
+        // print Adjanceny List Graph
+        void printGraph() override {
+
+            for(int i = 0; i < numNodes; i++) {
+                cout<<i<<" -> ";
+                for(auto it = adjList[i].begin(); it != adjList[i].end(); it++) {
+                    cout<<(*it).first<<"("<<(*it).second<<") ";
+                }
+                cout<<endl;
+            }
+        }
+
+        void removeNode(uint64_t srcNodeID) override {
+
+            if (srcNodeID >= numNodes ) {
+                cout<<"Invalid Node ID"<<endl;  
+                return;
+
+            }
+            
+            adjList[srcNodeID].clear();
+
+            for(auto i = adjList.begin(); i != adjList.end(); i++) {
+
+                // Skip the node to be removed
+                if(i->size() == 0) {
+                    continue;
+                }
+            
+                auto it = std::find_if(i->begin() , i->end(),
+                [srcNodeID](const std::pair<int, float>& p) { return p.first == srcNodeID; });
+                if( it != i->end()) {
+                    it = i->erase(it);
+                }
+            }
+
+            
+        }
 };
 
 int main() {
 
-    Graph g(4);
-
+    // GraphAdjMatrix g(4);
+    GraphAdjList g(4);
+    g.generateRandomGraph(10, 1, 50);
     g.printGraph();
 
 
-    g.updateWeight(0,1,10);
-    g.updateWeight(0,2,8);
+    g.updateEdge(0,1,10.0);
+    g.updateEdge(0,2,8.0);
 
-    g.addNode(0,11,10);
-    g.removeNode(0);
+    g.addNode();
+    g.addNode();
+    g.addEdge(0,3,5.0);
+    g.addEdge(4,1,1.0);
+    g.removeNode(1);
+    g.removeNode(6);
 
+    g.printGraph();
     return 0;
 }

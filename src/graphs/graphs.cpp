@@ -52,7 +52,7 @@ class GraphAdjMatrix: public Graph {
             adjMatrix.resize(numNodes, vector<float>(numNodes, INF));
         }
 
-        vector<vector<float>> adjMatrix;
+        
 
         
 
@@ -146,7 +146,7 @@ class GraphAdjMatrix: public Graph {
             for(int i = 0; i < numNodes; i++) {
                 cout<< i << " -> ";
                 for(int j = 0; j < numNodes; j++) {
-                    if (adjMatrix[i][j] != 0 && i != j){
+                    if (adjMatrix[i][j] != INF && i != j){
                         cout<<"("<<j<<")"<<adjMatrix[i][j]<<" ";
                     }
                     
@@ -154,6 +154,28 @@ class GraphAdjMatrix: public Graph {
                 cout<<endl;
             }
         }
+
+        void printAdjMatrix()  {
+
+            for(int i = 0; i < numNodes; i++) {
+                for(int j = 0; j < numNodes; j++) {
+                    
+                    cout<<adjMatrix[i][j]<<" ";
+                    
+                    
+                }
+                cout<<endl;
+            }
+        }
+
+        vector<vector<float>> getAdjMatrix() {
+            return adjMatrix;
+        }
+
+        private:
+            vector<vector<float>> adjMatrix;
+
+        
 };
 
 class GraphAdjList: public Graph {
@@ -260,24 +282,24 @@ class GraphAdjList: public Graph {
         }
 };
 
-int main() {
+// int main() {
 
-    // GraphAdjMatrix g(4);
-    GraphAdjList g(4);
-    g.generateRandomGraph(10, 1, 50);
-    g.printGraph();
+//     // GraphAdjMatrix g(4);
+//     GraphAdjList g(4);
+//     g.generateRandomGraph(10, 1, 50);
+//     g.printGraph();
 
 
-    g.updateEdge(0,1,10.0);
-    g.updateEdge(0,2,8.0);
+//     g.updateEdge(0,1,10.0);
+//     g.updateEdge(0,2,8.0);
 
-    g.addNode();
-    g.addNode();
-    g.addEdge(0,3,5.0);
-    g.addEdge(4,1,1.0);
-    g.removeNode(1);
-    g.removeNode(6);
+//     g.addNode();
+//     g.addNode();
+//     g.addEdge(0,3,5.0);
+//     g.addEdge(4,1,1.0);
+//     g.removeNode(1);
+//     g.removeNode(6);
 
-    g.printGraph();
-    return 0;
-}
+//     g.printGraph();
+//     return 0;
+// }

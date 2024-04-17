@@ -168,12 +168,12 @@ class GraphAdjMatrix: public Graph {
             }
         }
 
-        vector<vector<float>> getAdjMatrix() {
+        vector<vector<float> > getAdjMatrix() {
             return adjMatrix;
         }
 
         private:
-            vector<vector<float>> adjMatrix;
+            vector<vector<float> > adjMatrix;
 
         
 };

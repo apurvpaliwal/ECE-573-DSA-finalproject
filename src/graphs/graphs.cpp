@@ -36,7 +36,8 @@ class Graph {
  protected:
   uint64_t numNodes;
 
-  float INF = numeric_limits<float>::infinity();
+  // float INF = numeric_limits<float>::infinity();
+  static constexpr float INF = std::numeric_limits<float>::infinity();
 };
 
 class GraphAdjMatrix : public Graph {
@@ -95,42 +96,33 @@ class GraphAdjMatrix : public Graph {
       cout << "Invalid Node ID" << endl;
       return;
     }
-    for (int i = 0; i < adjMatrix.size(); i++) {
-      adjMatrix[srcNodeID][i] = INF;
-    }
-    for (int i = 0; i < adjMatrix.size(); i++) {
-      adjMatrix[i][srcNodeID] = INF;
-    }
 
-    // remove last element and shrink the graph
-    for (int i = 0; i < adjMatrix.size(); i++) {
-      if (adjMatrix[i][adjMatrix.size() - 1] != INF) {
-        break;
-      } else {
-        adjMatrix[i].pop_back();
-      }
+    // Adjust all rows
+    for (auto& row : adjMatrix) {
+      row.erase(row.begin() + srcNodeID);
     }
+    // Remove the node's own row
+    adjMatrix.erase(adjMatrix.begin() + srcNodeID);
+
     numNodes -= 1;
   }
 
   void generateRandomGraph(float maxWeight, float minWeight,
                            uint64_t density) override {
-    srand(time(0));
-    for (int i = 0; i < numNodes; i++) {
-      for (int j = 0; j < numNodes; j++) {
-        if (i != j &&
-            (static_cast<float>(rand()) / static_cast<float>(RAND_MAX) *
-                     (maxWeight - minWeight) +
-                 minWeight <
-             density)) {
-          adjMatrix[i][j] = static_cast<float>(rand()) /
-                                static_cast<float>(RAND_MAX) *
-                                (maxWeight - minWeight) +
-                            minWeight;
+    random_device rd;
+    mt19937 gen(rd());
+    uniform_real_distribution<float> weight_distr(minWeight, maxWeight);
+    uniform_real_distribution<float> density_distr(0.0f, 100.0f);
+
+    for (uint64_t i = 0; i < numNodes; i++) {
+      for (uint64_t j = 0; j < numNodes; j++) {
+        if (i != j && density_distr(gen) < density) {
+          adjMatrix[i][j] = weight_distr(gen);
         }
       }
     }
   }
+
   uint64_t getNumNodes() const { return numNodes; }
 
   void printGraph() override {
@@ -209,19 +201,22 @@ class GraphAdjList : public Graph {
 
   void updateEdge(uint64_t srcNodeID, uint64_t destNodeID,
                   float weight) override {
-    auto it = std::find_if(adjList[srcNodeID].begin(), adjList[srcNodeID].end(),
-                           [destNodeID](const std::pair<int, float>& p) {
-                             return p.first == destNodeID;
-                           });
-
-    if (it != adjList[srcNodeID].end()) {
-      it->second =
-          weight;  // Assuming weight is the new value for the second element
-    } else {
-      cout << "Node does not exist" << endl;
+    if (srcNodeID >= numNodes || destNodeID >= numNodes) {
+      cout << "Invalid Node ID" << endl;
       return;
     }
+
+    for (auto& edge : adjList[srcNodeID]) {
+      if (edge.first == destNodeID) {
+        edge.second = weight;
+        return;
+      }
+    }
+
+    // Edge does not exist, so add it.
+    adjList[srcNodeID].push_back(make_pair(destNodeID, weight));
   }
+
   // print Adjanceny List Graph
   void printGraph() override {
     for (int i = 0; i < numNodes; i++) {
@@ -239,22 +234,22 @@ class GraphAdjList : public Graph {
       return;
     }
 
-    adjList[srcNodeID].clear();
+    adjList.erase(adjList.begin() + srcNodeID);
 
-    for (auto i = adjList.begin(); i != adjList.end(); i++) {
-      // Skip the node to be removed
-      if (i->size() == 0) {
-        continue;
-      }
-
-      auto it = std::find_if(i->begin(), i->end(),
-                             [srcNodeID](const std::pair<int, float>& p) {
-                               return p.first == srcNodeID;
-                             });
-      if (it != i->end()) {
-        it = i->erase(it);
+    for (auto& nodeList : adjList) {
+      for (auto it = nodeList.begin(); it != nodeList.end();) {
+        if (it->first == srcNodeID) {
+          it = nodeList.erase(it);
+        } else {
+          if (it->first > srcNodeID) {
+            it->first--;  // Adjust the indices of the remaining nodes
+          }
+          ++it;
+        }
       }
     }
+
+    numNodes -= 1;
   }
 };
 

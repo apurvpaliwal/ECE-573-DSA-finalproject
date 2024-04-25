@@ -62,7 +62,11 @@ class GraphAdjMatrix : public Graph {
 
   void addNode() override {
     numNodes += 1;
-    adjMatrix.resize(numNodes, vector<float>(numNodes, INF));
+    adjMatrix.resize(numNodes);
+    for(int i = 0; i < adjMatrix.size(); i++) {
+        adjMatrix[i].resize(numNodes,INF);
+    }
+    
   }
 
   void addEdge(uint64_t srcNodeID, uint64_t destNodeID, float weight) override {
@@ -79,6 +83,7 @@ class GraphAdjMatrix : public Graph {
     }
     if (adjMatrix[srcNodeID][destNodeID] != INF) {
       cout << "Edge already exists" << endl;
+      updateEdge(srcNodeID, destNodeID, weight);
       return;
     }
 
@@ -151,8 +156,8 @@ class GraphAdjMatrix : public Graph {
 
   vector<vector<float> > getAdjMatrix() { return adjMatrix; }
 
- private:
   vector<vector<float> > adjMatrix;
+  
 };
 
 class GraphAdjList : public Graph {

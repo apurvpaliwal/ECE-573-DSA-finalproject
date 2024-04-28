@@ -1,24 +1,27 @@
+#ifndef INCREMENTALSHORTESTPATH
 #include <fstream>
 #include <iostream>
 #include <limits>
 #include <queue>
 #include <sstream>
 #include <unordered_set>
+#include <unordered_map>
 #include <vector>
-
 #include "../graphs/graphs.cpp"
 
 using namespace std;
 
-class FloydWarshallSP {
+class DynamicIncrementalShortestPath {
  private:
-  vector<vector<float>> dist;
+  GraphAdjMatrix& graph;
+  vector<vector<float>> &dist;
+  vector<vector<int64_t>> predecessors;
   uint64_t numNodes;
   const float INF = numeric_limits<float>::infinity();
 
  public:
-  FloydWarshallSP(const vector<vector<float>>& graph, uint64_t numNodes)
-      : dist(graph), numNodes(numNodes) {
+  DynamicIncrementalShortestPath(GraphAdjMatrix& graph, uint64_t numNodes)
+      : graph(graph), numNodes(numNodes), predecessors(numNodes, vector<int64_t>(numNodes, -1) ),dist(graph.adjMatrix)  {
     // Initialize the distances
     for (uint64_t i = 0; i < numNodes; ++i) {
       for (uint64_t j = 0; j < numNodes; ++j) {
@@ -26,6 +29,14 @@ class FloydWarshallSP {
           dist[i][j] = 0;
         } else if (dist[i][j] == 0) {
           dist[i][j] = INF;
+          
+          
+        }
+        if (dist[i][j] != INF) {
+          predecessors[i][j] = i; // Node i is a direct predecessor of j
+        }
+        else{
+          predecessors[i][j] = -1;
         }
       }
     }
@@ -39,7 +50,10 @@ class FloydWarshallSP {
           // We skip over infinity to avoid unnecessary computations and
           // potential overflow
           if (dist[i][k] != INF && dist[k][j] != INF) {
-            dist[i][j] = min(dist[i][j], dist[i][k] + dist[k][j]);
+            if (dist[i][j] > dist[i][k] + dist[k][j]) {
+                dist[i][j] = dist[i][k] + dist[k][j];
+                predecessors[i][j] = predecessors[k][j]; // Update predecessor
+            }
           }
         }
       }
@@ -59,85 +73,43 @@ class FloydWarshallSP {
     }
   }
 
-  // Method to incrementally update shortest paths from a single source in a
-  // graph when an edge weight has been updated
-  // void updateEdge(uint64_t u, uint64_t v, float w_new) {
-  //   // Edge weight update
-  //   if (w_new >= dist[u][v]) {
-  //     // If the new weight is not smaller, no need to update
-  //     return;
-  //   }
+  void printAdjList() const {
+    for (uint64_t i = 0; i < numNodes; ++i) {
+      cout << i << ": ";
+      for (uint64_t j = 0; j < numNodes; ++j) {
+        if (dist[i][j] != INF && dist[i][j] != 0) {
+          cout << j << " ";
+        }
+      }
+      cout << "\n";
+    }
+    
+  }
 
-  //   dist[u][v] = w_new;  // Update the weight in the distance matrix
+  vector<uint64_t> getPath(uint64_t src, uint64_t dest) {
+    if (predecessors[src][dest] == -1) {
+      return vector<uint64_t>();
+    }
+    vector<uint64_t> path ;
+    uint64_t currentNode = dest;
+    while (currentNode != src) {
+      if (currentNode == -1) {
+            // Invalid predecessor (no path found)
+            return path; // Return empty path
+      }
+      path.push_back(currentNode);
+      currentNode = predecessors[src][currentNode];
+      
+      
+    }
+    path.push_back(src);
+    reverse(path.begin(), path.end());
+    return path;
+    
+  }
 
-  //   // Initialize a queue for BFS
-  //   queue<uint64_t> Q;
-  //   vector<bool> inQueue(this->numNodes, false);
-  //   Q.push(u);
-  //   inQueue[u] = true;
 
-  //   // Perform a BFS-like update for all affected nodes
-  //   while (!Q.empty()) {
-  //     uint64_t current = Q.front();
-  //     Q.pop();
-  //     inQueue[current] = false;
-
-  //     // Check all vertices to update the shortest path
-  //     for (uint64_t i = 0; i < numNodes; ++i) {
-  //       // If the current node contributes to a shorter path to `i`
-  //       if (dist[u][current] != INF && dist[current][v] != INF &&
-  //           dist[u][current] + w_new + dist[current][v] < dist[u][i]) {
-  //         dist[u][i] = dist[u][current] + w_new + dist[current][v];
-
-  //         // If this node's shortest path has been updated and it's not in
-  //         the
-  //         // queue, add it
-  //         if (!inQueue[i]) {
-  //           Q.push(i);
-  //           inQueue[i] = true;
-  //         }
-  //       }
-  //     }
-  //   }
-  // }
-
-  // void updateEdge(uint64_t u, uint64_t v, float w_new) {
-  //   // Check if the new edge weight improves the distance.
-  //   if (dist[u][v] <= w_new) {
-  //     return;  // No update needed if the new weight is not better.
-  //   }
-
-  //   // Step 1: Identify affected sources
-  //   unordered_set<uint64_t> affected_sources = findAffectedSources(u, w_new);
-
-  //   // Step 2: Update distances for each affected source
-  //   for (uint64_t s : affected_sources) {
-  //     // Use a variant of Dijkstra's algorithm to update distances from s
-  //     priority_queue<pair<float, uint64_t>, vector<pair<float, uint64_t>>,
-  //                    greater<pair<float, uint64_t>>>
-  //         pq;
-  //     pq.push({dist[s][u] + w_new, v});  // Starting point for Dijkstra's
-  //     update
-
-  //     while (!pq.empty()) {
-  //       auto [cost, current] = pq.top();
-  //       pq.pop();
-
-  //       // Update the shortest path for each neighbor of current
-  //       for (uint64_t neighbor = 0; neighbor < numNodes; ++neighbor) {
-  //         if (dist[current][neighbor] < INF) {
-  //           float new_dist = cost + dist[current][neighbor];
-  //           if (new_dist < dist[s][neighbor]) {
-  //             dist[s][neighbor] = new_dist;
-  //             pq.push({new_dist, neighbor});
-  //           }
-  //         }
-  //       }
-  //     }
-  //   }
-  // }
-
-  void updateEdge(uint64_t u, uint64_t v, float w_new) {
+  void incrementalUpdateEdge(uint64_t u, uint64_t v, float w_new) {
     // Only proceed if the new weight is smaller, improving the shortest path
     if (dist[u][v] >= w_new) {
       dist[u][v] = w_new;  // Update the weight
@@ -158,6 +130,7 @@ class FloydWarshallSP {
             if (new_dist < dist[u][neighbor]) {
               dist[u][neighbor] = new_dist;
               pq.push({new_dist, neighbor});
+              predecessors[u][neighbor] = current;
             }
           }
         }
@@ -193,12 +166,13 @@ class FloydWarshallSP {
     return S;
   }
 
-  void insertNode(uint64_t z, vector<float> z_in, vector<float> z_out) {
+  void incrementalInsertNode(uint64_t z, vector<float> z_in, vector<float> z_out) {
     // Increase the size of the distance matrix to accommodate the new node
     for (auto& row : dist) {
       row.push_back(INF);
     }
     dist.push_back(vector<float>(numNodes + 1, INF));
+    predecessors.push_back(vector<int64_t>(numNodes + 1, -1));
 
     // Set the distances from and to the new node
     for (uint64_t i = 0; i < numNodes; ++i) {
@@ -230,6 +204,7 @@ class FloydWarshallSP {
           if (new_dist < dist[z][v]) {
             dist[z][v] = new_dist;
             pq.push({new_dist, v});
+            predecessors[z][v] = u;
           }
         }
       }
@@ -243,6 +218,7 @@ class FloydWarshallSP {
           float new_dist = dist[i][z] + dist[z][j];
           if (new_dist < dist[i][j]) {
             dist[i][j] = new_dist;
+            predecessors[i][j] = predecessors[z][j];
           }
         }
       }
@@ -250,55 +226,57 @@ class FloydWarshallSP {
   }
 };
 
-int main() {
-  // Map from airport codes to numeric indices
-  unordered_map<string, uint64_t> airportIndices = {
-      {"JFK", 0}, {"LAX", 1}, {"ATL", 2}, {"ORD", 3},
-      {"LHR", 4}, {"CDG", 5}, {"DXB", 6}};
+// int main() {
+//   // Map from airport codes to numeric indices
+//   unordered_map<string, uint64_t> airportIndices = {
+//       {"JFK", 0}, {"LAX", 1}, {"ATL", 2}, {"ORD", 3},
+//       {"LHR", 4}, {"CDG", 5}, {"DXB", 6}};
 
-  uint64_t numAirports = airportIndices.size();
-  GraphAdjMatrix graph(numAirports);
+//   uint64_t numAirports = airportIndices.size();
+//   GraphAdjMatrix graph(numAirports);
 
-  // Open the CSV file
-  ifstream file("flights.csv");
-  if (!file.is_open()) {
-    cerr << "Error opening file." << endl;
-    return 1;
-  }
+//   // Open the CSV file
+//   ifstream file("flights.csv");
+//   if (!file.is_open()) {
+//     cerr << "Error opening file." << endl;
+//     return 1;
+//   }
 
-  string line;
-  // Skip the header line
-  getline(file, line);
+//   string line;
+//   // Skip the header line
+//   getline(file, line);
 
-  while (getline(file, line)) {
-    stringstream lineStream(line);
-    string source, destination, weightStr;
-    getline(lineStream, source, ',');
-    getline(lineStream, destination, ',');
-    getline(lineStream, weightStr, ',');
+//   while (getline(file, line)) {
+//     stringstream lineStream(line);
+//     string source, destination, weightStr;
+//     getline(lineStream, source, ',');
+//     getline(lineStream, destination, ',');
+//     getline(lineStream, weightStr, ',');
 
-    float weight = stof(weightStr);
-    graph.addEdge(airportIndices[source], airportIndices[destination], weight);
-  }
-  file.close();  // Close the file after reading
+//     float weight = stof(weightStr);
+//     graph.addEdge(airportIndices[source], airportIndices[destination], weight);
+//   }
+//   file.close();  // Close the file after reading
 
-  // Instantiate the Floyd-Warshall algorithm with the constructed graph
-  FloydWarshallSP fw(graph.getAdjMatrix(), numAirports);
+//   // Instantiate the Floyd-Warshall algorithm with the constructed graph
+//   FloydWarshallSP fw(graph.getAdjMatrix(), numAirports);
 
-  // Compute the initial shortest paths
-  cout << "Computing shortest paths:" << endl;
-  fw.computeShortestPaths();
-  fw.printShortestPaths();
+//   // Compute the initial shortest paths
+//   cout << "Computing shortest paths:" << endl;
+//   fw.computeShortestPaths();
+//   fw.printShortestPaths();
 
-  // Assuming you've thoroughly tested the updateEdge method,
-  // you can trust it to update the shortest path matrix correctly.
+//   // Assuming you've thoroughly tested the updateEdge method,
+//   // you can trust it to update the shortest path matrix correctly.
 
-  // If you want to test an edge update, you can do it here
-  // and then simply print the paths without recomputing everything.
-  // For example:
-  fw.updateEdge(airportIndices["JFK"], airportIndices["LAX"], 2.5f);
-  cout << "\nShortest paths after edge update (from JFK to LAX):" << endl;
-  fw.printShortestPaths();
+//   // If you want to test an edge update, you can do it here
+//   // and then simply print the paths without recomputing everything.
+//   // For example:
+//   fw.updateEdge(airportIndices["JFK"], airportIndices["LAX"], 2.5f);
+//   cout << "\nShortest paths after edge update (from JFK to LAX):" << endl;
+//   fw.printShortestPaths();
 
-  return 0;
-}
+//   return 0;
+// }
+
+#endif

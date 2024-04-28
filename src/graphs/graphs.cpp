@@ -1,3 +1,4 @@
+#ifndef GRAPHS
 #include <stdio.h>
 
 #include <algorithm>
@@ -35,6 +36,7 @@ class Graph {
 
  protected:
   uint64_t numNodes;
+  uint64_t numEdges = 0;
 
   // float INF = numeric_limits<float>::infinity();
   static constexpr float INF = std::numeric_limits<float>::infinity();
@@ -87,7 +89,7 @@ class GraphAdjMatrix : public Graph {
       updateEdge(srcNodeID, destNodeID, weight);
       return;
     }
-
+    numEdges++;
     adjMatrix[srcNodeID][destNodeID] = weight;
   }
 
@@ -98,13 +100,23 @@ class GraphAdjMatrix : public Graph {
     }
 
     // Adjust all rows
+    size_t removedEdges =0;
     for (auto& row : adjMatrix) {
+      if (srcNodeID < row.size() && row[srcNodeID] != INF) {
+            removedEdges++;  // Edge is being removed
+      }
       row.erase(row.begin() + srcNodeID);
     }
     // Remove the node's own row
     adjMatrix.erase(adjMatrix.begin() + srcNodeID);
 
     numNodes -= 1;
+    numEdges -= removedEdges;
+
+    // If number of edges becomes negative, set it to 0
+    if (numEdges < 0) {
+        numEdges = 0;
+    }
   }
 
   void generateRandomGraph(float maxWeight, float minWeight,
@@ -273,3 +285,5 @@ class GraphAdjList : public Graph {
 //     g.printGraph();
 //     return 0;
 // }
+
+#endif

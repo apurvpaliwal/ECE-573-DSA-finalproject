@@ -12,7 +12,7 @@
 using namespace std;
 
 class DynamicIncrementalShortestPath {
- private:
+ public:
   GraphAdjMatrix& graph;
   vector<vector<float>> &dist;
   vector<vector<int64_t>> predecessors;

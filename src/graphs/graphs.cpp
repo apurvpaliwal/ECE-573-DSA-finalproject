@@ -34,7 +34,7 @@ class Graph {
   virtual void generateRandomGraph(float maxWeight, float minWeight,
                                    uint64_t density) = 0;
 
- protected:
+ public:
   uint64_t numNodes;
   uint64_t numEdges = 0;
 
@@ -85,7 +85,7 @@ class GraphAdjMatrix : public Graph {
       return;
     }
     if (adjMatrix[srcNodeID][destNodeID] != INF) {
-      cout << "Edge already exists" << endl;
+      // cout << "Edge already exists" << endl;
       updateEdge(srcNodeID, destNodeID, weight);
       return;
     }

@@ -107,7 +107,20 @@ class DynamicIncrementalShortestPath {
     return path;
     
   }
+  void addNode() {
+    //Non Incremental Addition
+    graph.addNode();
+    numNodes++;
+    predecessors.resize(numNodes, vector<int64_t>(numNodes, -1));
+    dist.resize(numNodes, vector<float>(numNodes, INF));
+  }
 
+  void updateEdge(uint64_t u, uint64_t v, float w_new) {
+    //Non Incremental Update
+    
+    graph.updateEdge(u, v, w_new);
+
+  }
 
   void incrementalUpdateEdge(uint64_t u, uint64_t v, float w_new) {
     // Only proceed if the new weight is smaller, improving the shortest path
@@ -168,6 +181,7 @@ class DynamicIncrementalShortestPath {
 
   void incrementalInsertNode(uint64_t z, vector<float> z_in, vector<float> z_out) {
     // Increase the size of the distance matrix to accommodate the new node
+    
     for (auto& row : dist) {
       row.push_back(INF);
     }
@@ -178,6 +192,7 @@ class DynamicIncrementalShortestPath {
     for (uint64_t i = 0; i < numNodes; ++i) {
       dist[i][z] = z_out[i];
       dist[z][i] = z_in[i];
+      graph.numEdges+=2;
     }
     dist[z][z] = 0;
 

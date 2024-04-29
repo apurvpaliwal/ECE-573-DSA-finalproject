@@ -127,6 +127,8 @@ class DynamicIncrementalShortestPath {
     if (dist[u][v] >= w_new) {
       dist[u][v] = w_new;  // Update the weight
 
+      unordered_set<uint64_t> S = findAffectedSources(u, w_new);
+
       // Use a variant of Dijkstra's algorithm to propagate the change
       priority_queue<pair<float, uint64_t>, vector<pair<float, uint64_t>>,
                      greater<pair<float, uint64_t>>>

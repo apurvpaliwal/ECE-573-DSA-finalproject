@@ -198,7 +198,7 @@ class DynamicIncrementalShortestPath {
 
     numNodes++;  // Increment the number of nodes in the graph
 
-    // Initialize a priority queue for Dijkstra's algorithm
+    // Initialize a priority queue 
     priority_queue<pair<float, uint64_t>, vector<pair<float, uint64_t>>,
                    greater<pair<float, uint64_t>>>
         pq;

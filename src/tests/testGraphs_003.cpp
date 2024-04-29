@@ -39,7 +39,7 @@ vector<float> generateRandomEdges(uint64_t srcNodeID, int numAirports) {
 }
 
 
-TEST_SUITE("Random Airport Index Node Inserts") {
+TEST_SUITE("TestcaseData_N_2") {
     TEST_CASE("TestcaseData_N_2") {
         
         cout<<"TestcaseData_N_2"<<endl;
@@ -75,90 +75,94 @@ TEST_SUITE("Random Airport Index Node Inserts") {
         file.close();
         cout<<"E = "<<g.numEdges<<endl;
 
-        DynamicIncrementalShortestPath fw(g, numAirports);
-        REQUIRE(fw.numNodes == numAirports);
+        
         
         // Define test cases for random edge updates
         for (int numInserts : {1, 2, 5, 10, 15, 20}) {
-
-            SUBCASE("Random Node Inserts") {
+            SUBCASE("Random Node Inserts)") {
+                
             
-                
+            DynamicIncrementalShortestPath fw(g, numAirports);
+            REQUIRE(fw.numNodes == numAirports);
 
-                
-                vector<uint64_t> nodeIndicesToInsert;
-                nodeIndicesToInsert.reserve(numInserts);
-                vector<vector<float>> IncomingEdges;
-                vector<vector<float>> OutgoingEdges;
+            
+        
+            
 
-
-
-
-                for (int i = 0; i < numInserts; ++i) {
-                    uint64_t newNodeIndex = numAirports + i; // Insert new nodes at the end
-                    nodeIndicesToInsert.push_back(newNodeIndex);
-
-                    IncomingEdges.push_back( generateRandomEdges(newNodeIndex ,numAirports+numInserts));
-                    OutgoingEdges.push_back( generateRandomEdges(newNodeIndex, numAirports+numInserts));
-
-                    
-                }
+            
+            vector<uint64_t> nodeIndicesToInsert;
+            nodeIndicesToInsert.reserve(numInserts);
+            vector<vector<float>> IncomingEdges;
+            vector<vector<float>> OutgoingEdges;
 
 
-                // SUBCASE("FullNodeInsert") {
-                //     INFO("Full Node Insert");
-                //     auto timeStart = std::chrono::high_resolution_clock::now();
-
-                //     for (int i = 0; i < numInserts; ++i) {
-                //         uint64_t newNodeIndex = numAirports + i; // Insert new nodes at the end
-                        
-                //         fw.addNode();
-                //         for(int j = 0; j < numAirports+i; j++){
-                //             fw.updateEdge(newNodeIndex, j, IncomingEdges[j]);
-                //         }
-                //         for(int j = 0; j < numAirports+i; j++){
-                //             fw.updateEdge(j, newNodeIndex, OutgoingEdges[j]);
-                //         }
 
 
-                //         // Verify the number of nodes after insertion
-                //         // CHECK(g.numNodes == (numAirports + i) );
-                        
-                //     }
-                    
-                
-                //     fw.computeShortestPaths();
-                    
-                //     auto timeEnd = std::chrono::high_resolution_clock::now();
-                //     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count();
-                //     cout<<"Time taken for " << numInserts << " random node inserts: " << duration << " nanoseconds" << endl;
-                // }
+            for (int i = 0; i < numInserts; ++i) {
+                uint64_t newNodeIndex = numAirports + i; // Insert new nodes at the end
+                nodeIndicesToInsert.push_back(newNodeIndex);
 
-                SUBCASE("IncrementalNodeUpdate") {
-                    INFO("Incremental Node Insert");
-                    auto timeStart = std::chrono::high_resolution_clock::now();
-                    for (int i = 0; i < numInserts; ++i) {
-                        uint64_t newNodeIndex = numAirports + i; // Insert new nodes at the end
-                        
-                        fw.incrementalInsertNode(newNodeIndex, IncomingEdges[i], OutgoingEdges[i]);
-
-                        // Verify the number of nodes after insertion
-                        
-                    }
-                    CHECK(fw.numNodes == (numAirports + numInserts ));
-
-                    auto timeEnd = std::chrono::high_resolution_clock::now();
-                    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count();
-                    cout<<"Time taken for " << numInserts << " random node inserts: " << duration << " nanoseconds" << endl;
-                }
-                
+                IncomingEdges.push_back( generateRandomEdges(newNodeIndex ,numAirports+numInserts));
+                OutgoingEdges.push_back( generateRandomEdges(newNodeIndex, numAirports+numInserts));
 
                 
             }
-        }
 
+
+            SUBCASE("FullNodeInsert") {
+                INFO("Full Node Insert");
+                auto timeStart = std::chrono::high_resolution_clock::now();
+
+                for (int i = 0; i < numInserts; ++i) {
+                    uint64_t newNodeIndex = numAirports + i; // Insert new nodes at the end
+                    
+                    fw.addNode();
+                    for(int j = 0; j < numAirports+i; j++){
+                        fw.updateEdge(newNodeIndex, j, IncomingEdges[i][j]);
+                    }
+                    for(int j = 0; j < numAirports+i; j++){
+                        fw.updateEdge(j, newNodeIndex, OutgoingEdges[i][j]);
+                    }
+
+
+                    // Verify the number of nodes after insertion
+                    // CHECK(g.numNodes == (numAirports + i) );
+                    
+                }
+                
+            
+                fw.computeShortestPaths();
+                
+                auto timeEnd = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count();
+                cout<<"Time taken for " << numInserts << " random node inserts: " << duration << " nanoseconds" << endl;
+            }
+
+            SUBCASE("IncrementalNodeUpdate") {
+                INFO("Incremental Node Insert");
+                auto timeStart = std::chrono::high_resolution_clock::now();
+                for (int i = 0; i < numInserts; ++i) {
+                    uint64_t newNodeIndex = numAirports + i; // Insert new nodes at the end
+                    
+                    fw.incrementalInsertNode(newNodeIndex, IncomingEdges[i], OutgoingEdges[i]);
+
+                    // Verify the number of nodes after insertion
+                    
+                }
+                CHECK(fw.numNodes == (numAirports + numInserts ));
+
+                auto timeEnd = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count();
+                cout<<"Time taken for " << numInserts << " random node inserts: " << duration << " nanoseconds" << endl;
+            }
                 
 
+                
+            
+         }
+
+                
+        }
             
     }
     

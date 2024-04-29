@@ -4,9 +4,10 @@
 #include <limits>
 #include <queue>
 #include <sstream>
-#include <unordered_set>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
+
 #include "../graphs/graphs.cpp"
 
 using namespace std;
@@ -14,14 +15,17 @@ using namespace std;
 class DynamicIncrementalShortestPath {
  public:
   GraphAdjMatrix& graph;
-  vector<vector<float>> &dist;
+  vector<vector<float>>& dist;
   vector<vector<int64_t>> predecessors;
   uint64_t numNodes;
   const float INF = numeric_limits<float>::infinity();
 
  public:
   DynamicIncrementalShortestPath(GraphAdjMatrix& graph, uint64_t numNodes)
-      : graph(graph), numNodes(numNodes), predecessors(numNodes, vector<int64_t>(numNodes, -1) ),dist(graph.adjMatrix)  {
+      : graph(graph),
+        numNodes(numNodes),
+        predecessors(numNodes, vector<int64_t>(numNodes, -1)),
+        dist(graph.adjMatrix) {
     // Initialize the distances
     for (uint64_t i = 0; i < numNodes; ++i) {
       for (uint64_t j = 0; j < numNodes; ++j) {
@@ -29,13 +33,10 @@ class DynamicIncrementalShortestPath {
           dist[i][j] = 0;
         } else if (dist[i][j] == 0) {
           dist[i][j] = INF;
-          
-          
         }
         if (dist[i][j] != INF) {
-          predecessors[i][j] = i; // Node i is a direct predecessor of j
-        }
-        else{
+          predecessors[i][j] = i;  // Node i is a direct predecessor of j
+        } else {
           predecessors[i][j] = -1;
         }
       }
@@ -51,8 +52,8 @@ class DynamicIncrementalShortestPath {
           // potential overflow
           if (dist[i][k] != INF && dist[k][j] != INF) {
             if (dist[i][j] > dist[i][k] + dist[k][j]) {
-                dist[i][j] = dist[i][k] + dist[k][j];
-                predecessors[i][j] = predecessors[k][j]; // Update predecessor
+              dist[i][j] = dist[i][k] + dist[k][j];
+              predecessors[i][j] = predecessors[k][j];  // Update predecessor
             }
           }
         }
@@ -83,32 +84,28 @@ class DynamicIncrementalShortestPath {
       }
       cout << "\n";
     }
-    
   }
 
   vector<uint64_t> getPath(uint64_t src, uint64_t dest) {
     if (predecessors[src][dest] == -1) {
       return vector<uint64_t>();
     }
-    vector<uint64_t> path ;
+    vector<uint64_t> path;
     uint64_t currentNode = dest;
     while (currentNode != src) {
       if (currentNode == -1) {
-            // Invalid predecessor (no path found)
-            return path; // Return empty path
+        // Invalid predecessor (no path found)
+        return path;  // Return empty path
       }
       path.push_back(currentNode);
       currentNode = predecessors[src][currentNode];
-      
-      
     }
     path.push_back(src);
     reverse(path.begin(), path.end());
     return path;
-    
   }
   void addNode() {
-    //Non Incremental Addition
+    // Non Incremental Addition
     graph.addNode();
     numNodes++;
     predecessors.resize(numNodes, vector<int64_t>(numNodes, -1));
@@ -116,42 +113,10 @@ class DynamicIncrementalShortestPath {
   }
 
   void updateEdge(uint64_t u, uint64_t v, float w_new) {
-    //Non Incremental Update
-    
+    // Non Incremental Update
+
     graph.updateEdge(u, v, w_new);
-
   }
-
-  void incrementalUpdateEdge(uint64_t u, uint64_t v, float w_new) {
-    // Only proceed if the new weight is smaller, improving the shortest path
-    if (dist[u][v] >= w_new) {
-      dist[u][v] = w_new;  // Update the weight
-
-      // Use a variant of Dijkstra's algorithm to propagate the change
-      priority_queue<pair<float, uint64_t>, vector<pair<float, uint64_t>>,
-                     greater<pair<float, uint64_t>>>
-          pq;
-      pq.push({w_new, v});  // Start from node v with updated cost
-
-      while (!pq.empty()) {
-        auto [cost, current] = pq.top();
-        pq.pop();
-
-        for (uint64_t neighbor = 0; neighbor < numNodes; ++neighbor) {
-          if (dist[current][neighbor] < INF) {  // Check valid connection
-            float new_dist = cost + dist[current][neighbor];
-            if (new_dist < dist[u][neighbor]) {
-              dist[u][neighbor] = new_dist;
-              pq.push({new_dist, neighbor});
-              predecessors[u][neighbor] = current;
-            }
-          }
-        }
-      }
-    }
-  }
-
-  // Helper function to find affected sources based on Algorithm 4
   unordered_set<uint64_t> findAffectedSources(uint64_t u, float w_new) {
     unordered_set<uint64_t> S;  // Set of affected sources
     queue<uint64_t> Q;
@@ -179,61 +144,103 @@ class DynamicIncrementalShortestPath {
     return S;
   }
 
-  void incrementalInsertNode(uint64_t z, vector<float> z_in, vector<float> z_out) {
-    // Increase the size of the distance matrix to accommodate the new node
-    
-    for (auto& row : dist) {
-      row.push_back(INF);
-    }
-    dist.push_back(vector<float>(numNodes + 1, INF));
-    predecessors.push_back(vector<int64_t>(numNodes + 1, -1));
+  void incrementalUpdateEdge(uint64_t u, uint64_t v, float w_new) {
+    // Check if the new weight improves the existing edge weight
+    if (dist[u][v] > w_new) {
+      dist[u][v] = w_new;      // Update the edge weight if it improves
+      predecessors[u][v] = u;  // Update the predecessor for edge u->v
 
-    // Set the distances from and to the new node
-    for (uint64_t i = 0; i < numNodes; ++i) {
-      dist[i][z] = z_out[i];
-      dist[z][i] = z_in[i];
-      graph.numEdges+=2;
-    }
-    dist[z][z] = 0;
+      // Find affected sources using the optimized BFS method
+      auto affected_sources = findAffectedSources(u, w_new);
 
-    numNodes++;  // Increment the number of nodes in the graph
+      // Dijkstra-like propagation from each affected source
+      for (auto s : affected_sources) {
+        priority_queue<pair<float, uint64_t>, vector<pair<float, uint64_t>>,
+                       greater<pair<float, uint64_t>>>
+            pq;
+        pq.push({dist[s][u] + w_new, v});
 
-    // Initialize a priority queue 
-    priority_queue<pair<float, uint64_t>, vector<pair<float, uint64_t>>,
-                   greater<pair<float, uint64_t>>>
-        pq;
-    pq.push({0, z});  // Start from the new node
+        vector<float> min_distance(numNodes, INF);
+        min_distance[v] = dist[s][u] + w_new;
+        vector<uint64_t> local_predecessors(numNodes, UINT64_MAX);
+        local_predecessors[v] = u;
 
-    // Perform Dijkstra's algorithm to update distances from the new node
-    while (!pq.empty()) {
-      auto [d, u] = pq.top();
-      pq.pop();
+        while (!pq.empty()) {
+          auto [cost, current] = pq.top();
+          pq.pop();
 
-      if (d > dist[z][u]) {
-        continue;  // Skip if we have found a better path already
-      }
+          // Early stopping if no improvement
+          if (cost > min_distance[current]) continue;
 
-      for (uint64_t v = 0; v < numNodes; ++v) {
-        if (dist[u][v] < INF) {
-          float new_dist = d + dist[u][v];
-          if (new_dist < dist[z][v]) {
-            dist[z][v] = new_dist;
-            pq.push({new_dist, v});
-            predecessors[z][v] = u;
+          for (uint64_t neighbor = 0; neighbor < numNodes; ++neighbor) {
+            if (dist[current][neighbor] < INF) {  // Check valid connection
+              float new_dist = cost + dist[current][neighbor];
+              if (new_dist < dist[s][neighbor]) {
+                dist[s][neighbor] = new_dist;
+                predecessors[s][neighbor] = current;
+                // Update the priority queue only if we find a better distance
+                if (new_dist < min_distance[neighbor]) {
+                  min_distance[neighbor] = new_dist;
+                  local_predecessors[neighbor] = current;
+                  pq.push({new_dist, neighbor});
+                }
+              }
+            }
+          }
+        }
+        // Update global predecessors from local changes
+        for (uint64_t i = 0; i < numNodes; ++i) {
+          if (local_predecessors[i] != UINT64_MAX) {
+            predecessors[s][i] = local_predecessors[i];
           }
         }
       }
     }
+  }
 
-    // Now update the distances between all pairs of nodes considering z as an
-    // intermediate node
+  void incrementalInsertNode(uint64_t z, vector<float> z_in,
+                             vector<float> z_out) {
+    // Increment the number of nodes in the graph first
+    numNodes++;
+
+    // Resize the distance and predecessors matrices to accommodate the new node
+    dist.resize(numNodes, vector<float>(numNodes, INF));
+    predecessors.resize(numNodes, vector<int64_t>(numNodes, -1));
+
+    // Initialize distances for the new node and update direct connections
+    for (uint64_t i = 0; i < numNodes - 1; ++i) {
+      dist[i][z] = z_out[i];   // Outgoing from existing nodes to new node
+      dist[z][i] = z_in[i];    // Incoming from new node to existing nodes
+      dist[i].push_back(INF);  // Expand existing rows with INF
+      predecessors[i].push_back(
+          -1);  // No direct predecessor to new node from existing nodes
+    }
+    dist[z][z] = 0;           // Distance to itself is zero
+    predecessors[z][z] = -1;  // No predecessor to itself
+
+    // Initialize the last row for the new node
     for (uint64_t i = 0; i < numNodes; ++i) {
-      for (uint64_t j = 0; j < numNodes; ++j) {
+      dist[z][i] = z_in[i];
+      dist[i][z] = z_out[i];
+      if (z_in[i] < INF) {
+        predecessors[z][i] = z;  // New node is the direct predecessor
+      }
+      if (z_out[i] < INF) {
+        predecessors[i][z] =
+            i;  // Existing nodes are direct predecessors to new node
+      }
+    }
+
+    // Use the new node as an intermediate to update all paths
+    for (uint64_t i = 0; i < numNodes; ++i) {
+      for (uint64_t j = 0; i < numNodes; ++i) {
+        // Check if using z as an intermediate can improve the distance i to j
         if (dist[i][z] < INF && dist[z][j] < INF) {
-          float new_dist = dist[i][z] + dist[z][j];
-          if (new_dist < dist[i][j]) {
-            dist[i][j] = new_dist;
-            predecessors[i][j] = predecessors[z][j];
+          float potentialNewDist = dist[i][z] + dist[z][j];
+          if (potentialNewDist < dist[i][j]) {
+            dist[i][j] = potentialNewDist;
+            predecessors[i][j] =
+                predecessors[z][j];  // Update predecessor via new node
           }
         }
       }
@@ -241,57 +248,67 @@ class DynamicIncrementalShortestPath {
   }
 };
 
-// int main() {
-//   // Map from airport codes to numeric indices
-//   unordered_map<string, uint64_t> airportIndices = {
-//       {"JFK", 0}, {"LAX", 1}, {"ATL", 2}, {"ORD", 3},
-//       {"LHR", 4}, {"CDG", 5}, {"DXB", 6}};
+int main() {
+  // Map from airport codes to numeric indices
+  unordered_map<string, uint64_t> airportIndices = {
+      {"JFK", 0}, {"LAX", 1}, {"ATL", 2}, {"ORD", 3},
+      {"LHR", 4}, {"CDG", 5}, {"DXB", 6}};
 
-//   uint64_t numAirports = airportIndices.size();
-//   GraphAdjMatrix graph(numAirports);
+  uint64_t numAirports = airportIndices.size();
+  GraphAdjMatrix graph(numAirports);  // Assume GraphAdjMatrix manages an
+                                      // adjacency matrix internally
 
-//   // Open the CSV file
-//   ifstream file("flights.csv");
-//   if (!file.is_open()) {
-//     cerr << "Error opening file." << endl;
-//     return 1;
-//   }
+  // Open the CSV file
+  ifstream file("flights.csv");
+  if (!file.is_open()) {
+    cerr << "Error opening file." << endl;
+    return 1;
+  }
 
-//   string line;
-//   // Skip the header line
-//   getline(file, line);
+  string line;
+  // Skip the header line if necessary
+  getline(file, line);
 
-//   while (getline(file, line)) {
-//     stringstream lineStream(line);
-//     string source, destination, weightStr;
-//     getline(lineStream, source, ',');
-//     getline(lineStream, destination, ',');
-//     getline(lineStream, weightStr, ',');
+  while (getline(file, line)) {
+    stringstream lineStream(line);
+    string source, destination, weightStr;
+    getline(lineStream, source, ',');
+    getline(lineStream, destination, ',');
+    getline(lineStream, weightStr, ',');
 
-//     float weight = stof(weightStr);
-//     graph.addEdge(airportIndices[source], airportIndices[destination], weight);
-//   }
-//   file.close();  // Close the file after reading
+    float weight = stof(weightStr);
+    // Add edges to the graph based on read data
+    graph.addEdge(airportIndices[source], airportIndices[destination], weight);
+  }
+  file.close();  // Close the file after reading
 
-//   // Instantiate the Floyd-Warshall algorithm with the constructed graph
-//   FloydWarshallSP fw(graph.getAdjMatrix(), numAirports);
+  // Instantiate the Floyd-Warshall algorithm with the constructed graph
+  DynamicIncrementalShortestPath sp(graph, numAirports);
 
-//   // Compute the initial shortest paths
-//   cout << "Computing shortest paths:" << endl;
-//   fw.computeShortestPaths();
-//   fw.printShortestPaths();
+  // Compute the initial shortest paths
+  cout << "Computing shortest paths:" << endl;
+  sp.computeShortestPaths();
+  sp.printShortestPaths();
 
-//   // Assuming you've thoroughly tested the updateEdge method,
-//   // you can trust it to update the shortest path matrix correctly.
+  // Example of edge update
+  cout
+      << "\nShortest paths after edge update (from JFK to LAX, new weight 2.5):"
+      << endl;
+  sp.incrementalUpdateEdge(airportIndices["JFK"], airportIndices["LAX"], 2.5f);
+  sp.printShortestPaths();
 
-//   // If you want to test an edge update, you can do it here
-//   // and then simply print the paths without recomputing everything.
-//   // For example:
-//   fw.updateEdge(airportIndices["JFK"], airportIndices["LAX"], 2.5f);
-//   cout << "\nShortest paths after edge update (from JFK to LAX):" << endl;
-//   fw.printShortestPaths();
+  // Example of adding a new node
+  float inf = std::numeric_limits<float>::infinity();
+  vector<float> z_in(numAirports, inf);
+  vector<float> z_out(numAirports, inf);
+  z_in[airportIndices["JFK"]] = 5.0;   // Example distance from new node to JFK
+  z_out[airportIndices["LAX"]] = 5.5;  // Example distance from LAX to new node
 
-//   return 0;
-// }
+  cout << "\nAdding a new node and updating shortest paths:" << endl;
+  sp.incrementalInsertNode(numAirports, z_in, z_out);
+  sp.printShortestPaths();
+
+  return 0;
+}
 
 #endif

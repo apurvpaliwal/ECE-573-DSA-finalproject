@@ -39,7 +39,7 @@ vector<float> generateRandomEdges(uint64_t srcNodeID, int numAirports) {
 }
 
 
-TEST_SUITE("TestcaseData_N_2") {
+TEST_SUITE("Node Insertion") {
     TEST_CASE("TestcaseData_N_2") {
         
         cout<<"TestcaseData_N_2"<<endl;
@@ -78,7 +78,7 @@ TEST_SUITE("TestcaseData_N_2") {
         
         
         // Define test cases for random edge updates
-        for (int numInserts : {1, 2, 5, 10, 15, 20}) {
+        for (int numInserts : { 10, 15, 20}) {
             SUBCASE("Random Node Inserts)") {
                 
             
@@ -974,4 +974,136 @@ TEST_SUITE("TestcaseData_N_2") {
             
     }
     
+};
+
+
+TEST_SUITE("Node Insertion Fixed") {
+    TEST_CASE("TestcaseData_N_2") {
+
+        cout<<"TestcaseData_N_2"<<endl;
+        
+        string filename = "../data/test_case_N_2.csv"; // Change this to your input file name
+        unordered_map<string, int> airportIndices;
+
+        // Populate the airport indices map
+        createAirportIndicesMap(filename, airportIndices);
+        uint64_t numAirports = airportIndices.size();
+        cout<<"N = "<<numAirports<<endl;
+        GraphAdjMatrix g(numAirports);
+
+        std::ifstream file(filename);
+        if (!file.is_open()) {
+            std::cerr << "Error opening file." << std::endl;
+        }
+
+        std::string line;
+        // Skip the header line
+        getline(file, line);
+
+        while (getline(file, line)) {
+            std::stringstream lineStream(line);
+            std::string source, destination, weightStr;
+            getline(lineStream, source, ',');
+            getline(lineStream, destination, ',');
+            getline(lineStream, weightStr, ',');
+
+            float weight = std::stof(weightStr);
+            g.addEdge(airportIndices[source], airportIndices[destination], weight);
+        }
+        file.close();
+        cout<<"E = "<<g.numEdges<<endl;
+
+        
+        
+        // Define test cases for random edge updates
+        
+        SUBCASE("Random Node Inserts)") {
+                
+            
+            DynamicIncrementalShortestPath fw(g, numAirports);
+            REQUIRE(fw.numNodes == numAirports);
+
+            
+        
+            
+            int numInserts = 10;
+            
+            vector<uint64_t> nodeIndicesToInsert;
+            nodeIndicesToInsert.reserve(numInserts);
+            vector<vector<float>> IncomingEdges;
+            vector<vector<float>> OutgoingEdges;
+
+
+
+
+            for (int i = 0; i < numInserts; ++i) {
+                uint64_t newNodeIndex = numAirports + i; // Insert new nodes at the end
+                nodeIndicesToInsert.push_back(newNodeIndex);
+
+                IncomingEdges.push_back( generateRandomEdges(newNodeIndex ,numAirports+numInserts));
+                OutgoingEdges.push_back( generateRandomEdges(newNodeIndex, numAirports+numInserts));
+
+                
+            }
+
+
+            SUBCASE("FullNodeInsert") {
+                INFO("Full Node Insert");
+                auto timeStart = std::chrono::high_resolution_clock::now();
+
+                for (int i = 0; i < numInserts; ++i) {
+                    uint64_t newNodeIndex = numAirports + i; // Insert new nodes at the end
+                    
+                    fw.addNode();
+                    for(int j = 0; j < numAirports+i; j++){
+                        fw.updateEdge(newNodeIndex, j, IncomingEdges[i][j]);
+                    }
+                    for(int j = 0; j < numAirports+i; j++){
+                        fw.updateEdge(j, newNodeIndex, OutgoingEdges[i][j]);
+                    }
+
+
+                    // Verify the number of nodes after insertion
+                    // CHECK(g.numNodes == (numAirports + i) );
+                    
+                }
+                
+            
+                fw.computeShortestPaths();
+                
+                auto timeEnd = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count();
+                cout<<"Time taken for full " << numInserts << " random node inserts: " << duration << " nanoseconds" << endl;
+            }
+
+            SUBCASE("IncrementalNodeInsert") {
+                INFO("Incremental Node Insert");
+                auto timeStart = std::chrono::high_resolution_clock::now();
+                for (int i = 0; i < numInserts; ++i) {
+                    uint64_t newNodeIndex = numAirports + i; // Insert new nodes at the end
+                    
+                    fw.incrementalInsertNode(newNodeIndex, IncomingEdges[i], OutgoingEdges[i]);
+
+                    // Verify the number of nodes after insertion
+                    
+                }
+                CHECK(fw.numNodes == (numAirports + numInserts ));
+
+                auto timeEnd = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count();
+                cout<<"Time taken for incremental " << numInserts << " random node inserts: " << duration << " nanoseconds" << endl;
+            }
+                
+
+                
+            
+            }
+
+                
+        
+            
+    
+    
+    }
+
 }

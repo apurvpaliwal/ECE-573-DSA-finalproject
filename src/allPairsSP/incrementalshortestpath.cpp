@@ -145,15 +145,11 @@ class DynamicIncrementalShortestPath {
   }
 
   void incrementalUpdateEdge(uint64_t u, uint64_t v, float w_new) {
-    // Check if the new weight improves the existing edge weight
     if (dist[u][v] > w_new) {
-      dist[u][v] = w_new;      // Update the edge weight if it improves
-      predecessors[u][v] = u;  // Update the predecessor for edge u->v
+      dist[u][v] = w_new;
+      predecessors[u][v] = u;
 
-      // Find affected sources using the optimized BFS method
       auto affected_sources = findAffectedSources(u, w_new);
-
-      // Dijkstra-like propagation from each affected source
       for (auto s : affected_sources) {
         priority_queue<pair<float, uint64_t>, vector<pair<float, uint64_t>>,
                        greater<pair<float, uint64_t>>>
@@ -169,26 +165,23 @@ class DynamicIncrementalShortestPath {
           auto [cost, current] = pq.top();
           pq.pop();
 
-          // Early stopping if no improvement
           if (cost > min_distance[current]) continue;
 
           for (uint64_t neighbor = 0; neighbor < numNodes; ++neighbor) {
-            if (dist[current][neighbor] < INF) {  // Check valid connection
+            if (dist[current][neighbor] < INF) {
               float new_dist = cost + dist[current][neighbor];
               if (new_dist < dist[s][neighbor]) {
                 dist[s][neighbor] = new_dist;
-                predecessors[s][neighbor] = current;
-                // Update the priority queue only if we find a better distance
+                local_predecessors[neighbor] = current;
                 if (new_dist < min_distance[neighbor]) {
                   min_distance[neighbor] = new_dist;
-                  local_predecessors[neighbor] = current;
                   pq.push({new_dist, neighbor});
                 }
               }
             }
           }
         }
-        // Update global predecessors from local changes
+        // Correctly update global predecessors from local changes
         for (uint64_t i = 0; i < numNodes; ++i) {
           if (local_predecessors[i] != UINT64_MAX) {
             predecessors[s][i] = local_predecessors[i];
@@ -200,47 +193,39 @@ class DynamicIncrementalShortestPath {
 
   void incrementalInsertNode(uint64_t z, vector<float> z_in,
                              vector<float> z_out) {
-    // Increment the number of nodes in the graph first
     numNodes++;
 
-    // Resize the distance and predecessors matrices to accommodate the new node
     dist.resize(numNodes, vector<float>(numNodes, INF));
     predecessors.resize(numNodes, vector<int64_t>(numNodes, -1));
 
-    // Initialize distances for the new node and update direct connections
     for (uint64_t i = 0; i < numNodes - 1; ++i) {
-      dist[i][z] = z_out[i];   // Outgoing from existing nodes to new node
-      dist[z][i] = z_in[i];    // Incoming from new node to existing nodes
-      dist[i].push_back(INF);  // Expand existing rows with INF
-      predecessors[i].push_back(
-          -1);  // No direct predecessor to new node from existing nodes
+      dist[i][z] = z_out[i];
+      dist[z][i] = z_in[i];
+      dist[i].push_back(INF);
+      predecessors[i].push_back(-1);
     }
-    dist[z][z] = 0;           // Distance to itself is zero
-    predecessors[z][z] = -1;  // No predecessor to itself
+    dist[z][z] = 0;
+    predecessors[z][z] = -1;
 
-    // Initialize the last row for the new node
     for (uint64_t i = 0; i < numNodes; ++i) {
       dist[z][i] = z_in[i];
       dist[i][z] = z_out[i];
-      if (z_in[i] < INF) {
-        predecessors[z][i] = z;  // New node is the direct predecessor
+      if (z_in[i] != INF) {
+        predecessors[z][i] = z;
       }
-      if (z_out[i] < INF) {
-        predecessors[i][z] =
-            i;  // Existing nodes are direct predecessors to new node
+      if (z_out[i] != INF) {
+        predecessors[i][z] = i;
       }
     }
 
-    // Use the new node as an intermediate to update all paths
+    // Correcting the loop
     for (uint64_t i = 0; i < numNodes; ++i) {
-      for (uint64_t j = 0; i < numNodes; ++i) {
-        // Check if using z as an intermediate can improve the distance i to j
+      for (uint64_t j = 0; j < numNodes; ++j) {
         if (dist[i][z] < INF && dist[z][j] < INF) {
           float potentialNewDist = dist[i][z] + dist[z][j];
           if (potentialNewDist < dist[i][j]) {
             dist[i][j] = potentialNewDist;
-            predecessors[i][j] =
-                predecessors[z][j];  // Update predecessor via new node
+            predecessors[i][j] = predecessors[z][j];
           }
         }
       }

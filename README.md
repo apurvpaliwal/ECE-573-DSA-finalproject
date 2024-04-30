@@ -7,7 +7,7 @@
 - Sumedh Marathe (sam792)
 - Apurv Palival (ap2523)
 
-Structure of this repository :
+```Structure of this repository :
 ---root
     |----doc (Documents/Reports/Paper)
     |----ref (Reference Research Papers)
@@ -22,7 +22,8 @@ Structure of this repository :
             |       |----incrementalQUINCA.cpp (QUNICA Algorithm Implementation)
             |       |----floydWarshall.cpp (Floyd Warshall Implementation)
             |----tests  (Testcases)
-            |----Makefile ()
+            |----Makefile (Build file)
+```
 
 ## Run :
 1. Navigate to the src folder or run the following on your command line 

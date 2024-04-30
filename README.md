@@ -28,9 +28,13 @@ Structure of this repository :
 1. Navigate to the src folder or run the following on your command line 
     `cd ece-573-dsa-finalproject\src\allPairsSP`
 
-2. Build the program 
+2. Build the program using -
+    `g++ -std=c++17 -g ..\graphs\graphs.cpp incrementalshortestpath.cpp -o incrementalshortestpath.exe`
 
-2. On the command line, run the build command -
+3. Execute the program by running
+    `.\incrementalshortestpath.exe`
+
+4. Optionally on the command line, run the build command -
     `make`
 
 3. The above command will build all the executables for running the program. The graph program will execute a basic addition of node and insertion of a node on a test graph.

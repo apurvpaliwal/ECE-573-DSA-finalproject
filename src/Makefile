@@ -14,10 +14,10 @@ all: $(TARGET)
 $(TARGET): incrementalshortestpath.o graphs.o 
 	$(CXX) $(CXXFLAGS) -o $(TARGET) incrementalshortestpath.o graphs.o
 
-incrementalshortestpath.o: allPairsSP\incrementalshortestpath.cpp graphs\graphs.h
+incrementalshortestpath.o: allPairsSP\incrementalshortestpath.cpp graphs\graphs.cpp
 	$(CXX) $(CXXFLAGS) -c -o incrementalshortestpath.o allPairsSP\incrementalshortestpath.cpp 
 
-graphs.o: graphs\graphs.cpp graphs\graphs.h
+graphs.o: graphs\graphs.cpp
 	$(CXX) $(CXXFLAGS) -c -o graphs.o graphs\graphs.cpp
 
 

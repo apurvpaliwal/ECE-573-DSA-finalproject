@@ -9,6 +9,7 @@
 #include "../graphs/graphs.cpp"
 #include <queue>
 #include <set>
+#include <unordered_set>
 
 using namespace std;
 
@@ -170,53 +171,56 @@ class IncrementalShortestPath: public GraphAdjMatrix {
             }
         }
 
-        void updateEdge(uint64_t srcNodeID,  uint64_t destNodeID, float newWeight) {
-            
-            if (newWeight < adjMatrix[srcNodeID][destNodeID]) {
-                set<uint64_t> affectedSources = findAffectedSourcesEdgeInsert(srcNodeID, destNodeID, newWeight);
+    void incrementalNodeAddition(uint64_t newNode,  vector<float> z_in, vector<float> z_out) {
 
-                // Update distance (u, v)
-                adjMatrix[srcNodeID][destNodeID] = newWeight;
+        // Step 1: Identify affected sources S(z) using a priority queue
+        unordered_set<int> S_z;
+        priority_queue<pair<float, int>, vector<pair<float, int>>, greater<pair<float, int>>> PQ;
 
-                queue<int> Q;
-                for (int source : affectedSources) {
-                    Q.push(source);
-                }
+        PQ.push({0.0, newNode}); // Start from node z with distance 0
 
-                vector<bool> visited(numNodes, false);
-                visited[v] = true;
+        while (!PQ.empty()) {
+            auto [pxz, x] = PQ.top();
+            PQ.pop();
 
-                while (!Q.empty()) {
-                    int y = Q.front();
-                    Q.pop();
-
-                    // Update distances for source nodes
-                    for (int x : findAffectedSources(y)) {
-                        if (distances[x][y] > distances[x][u] + newWeight + distances[v][y]) {
-                            distances[x][y] = distances[x][u] + newWeight + distances[v][y];
-
-                            if (y != v) {
-                                affectedSources.insert(x);
-                            }
-                        }
-                    }
-
-                    // Enqueue all neighbors that get closer to u
-                    for (int w = 0; w < numNodes; ++w) {
-                        if (!visited[w] && adjMatrix[u][w] > newWeight + adjMatrix[v][w] && adjMatrix[v][w] == adjMatrix[v][y] + graph[y][w]) {
-                            Q.push(w);
-                            visited[w] = true;
-                        }
-                    }
+            for (int q = 0; q < numNodes; ++q) {
+                if (adjMatrix[q][newNode] > adjMatrix[q][x] + pxz) {
+                    adjMatrix[q][newNode] = adjMatrix[q][x] + pxz;
+                    PQ.push({adjMatrix[q][newNode], q});
+                    S_z.insert(q);
                 }
             }
         }
 
-        void incrementalNodeAddition(uint64_t srcNodeID,  uint64_t destNodeID) {
+        // Step 2: Update distances for affected target nodes
+        PQ.push({0.0, newNode}); // Start from node z with distance 0
 
+        while (!PQ.empty()) {
+            auto [pzy, y] = PQ.top();
+            PQ.pop();
 
+            if (y != newNode) {
+                for (int x : S_z) {
+                    if (adjMatrix[x][y] > adjMatrix[x][newNode] + adjMatrix[newNode][y]) {
+                        adjMatrix[x][y] = adjMatrix[x][newNode] + adjMatrix[newNode][y];
+                        PQ.push({adjMatrix[x][y], y});
+                    }
+                }
+            }
 
+            for (int w = 0; w < numNodes; ++w) {
+                if (adjMatrix[newNode][w] > pzy + adjMatrix[y][w]) {
+                    adjMatrix[newNode][w] = pzy + adjMatrix[y][w];
+                    PQ.push({adjMatrix[newNode][w], w});
+                    predecessors[w].clear();
+                    predecessors[w].push_back(y);
+                }
+            }
         }
+
+
+
+    }
 };
 
 

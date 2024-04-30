@@ -2009,4 +2009,902 @@ TEST_SUITE("Random Airport Index Edge Updates") {
             
     }
     
+
+    TEST_CASE("TestcaseData_RealModified2") {
+        cout<<"TestcaseData_RealModified2"<<endl;
+        
+        string filename = "../data/inf-USAir97.mtx"; // Change this to your input file name
+        unordered_map<string, int> airportIndices;
+
+        // Populate the airport indices map
+        createAirportIndicesMap(filename, airportIndices);
+        uint64_t numAirports = airportIndices.size();
+        cout<<"N = "<<numAirports<<endl;
+        GraphAdjMatrix g(numAirports);
+
+        std::ifstream file(filename);
+        if (!file.is_open()) {
+            std::cerr << "Error opening file." << std::endl;
+        }
+
+        std::string line;
+        // Skip the header line
+        getline(file, line);
+
+        while (getline(file, line)) {
+            std::stringstream lineStream(line);
+            std::string source, destination, weightStr;
+            getline(lineStream, source, ' ');
+            getline(lineStream, destination, ' ');
+            getline(lineStream, weightStr);
+
+            float weight = std::stof(weightStr);
+            g.addEdge(airportIndices[source], airportIndices[destination], weight);
+        }
+        file.close();
+        cout<<"E = "<<g.numEdges<<endl;
+
+        DynamicIncrementalShortestPath fw(g, numAirports);
+        REQUIRE(fw.numNodes == numAirports);
+
+        // Define test cases for random edge updates
+        for (int numUpdates : {1, 2, 5, 10, 15, 20}) {
+            SUBCASE("Random Edge Updates)") {
+                
+
+                vector<pair<uint64_t, pair<uint64_t, float>>> edgeUpdates = generateRandomEdgeUpdates(numUpdates, numAirports);
+
+
+                SUBCASE("FullEdgeUpdate") {
+                    INFO("Full Edge Update");
+                    auto timeStart = std::chrono::high_resolution_clock::now();
+                    for (auto i: edgeUpdates) {
+                        uint64_t sourceIdx = i.first;
+                        uint64_t destinationIdx = i.second.first;
+                        float weight = i.second.second;
+
+                        // Perform incremental edge update
+                        
+                        g.addEdge(sourceIdx, destinationIdx, weight);
+                
+                    }
+                    fw.computeShortestPaths();
+                    auto timeEnd = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count();
+                    cout<<"Time taken for " << numUpdates << " random edge updates: " << duration << " nanoseconds" << endl;
+                }
+                
+
+                SUBCASE("IncrementalEdgeUpdate") {
+                    INFO("Incremental Edge Update");
+                    auto timeStart = std::chrono::high_resolution_clock::now();
+                    for (auto i: edgeUpdates) {
+                        uint64_t sourceIdx = i.first;
+                        uint64_t destinationIdx = i.second.first;
+                        float weight = i.second.second;
+
+                        // Perform incremental edge update
+                        
+                        fw.incrementalUpdateEdge(sourceIdx, destinationIdx, weight);
+                
+                    }
+                    auto timeEnd = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count();
+                    cout<<"Time taken for " << numUpdates << " random edge updates: " << duration << " nanoseconds" << endl;
+                }
+            }
+        }
+
+                
+
+            
+    }
+   
+}
+
+
+
+TEST_SUITE("Edge Updates Path Reconstruction") {
+    TEST_CASE("TestcaseData_N_2") {
+        
+        cout<<"TestcaseData_N_2"<<endl;
+        
+        string filename = "../data/test_case_N_2.csv"; // Change this to your input file name
+        unordered_map<string, int> airportIndices;
+
+        // Populate the airport indices map
+        createAirportIndicesMap(filename, airportIndices);
+        uint64_t numAirports = airportIndices.size();
+        cout<<"N = "<<numAirports<<endl;
+        GraphAdjMatrix g(numAirports);
+
+        std::ifstream file(filename);
+        if (!file.is_open()) {
+            std::cerr << "Error opening file." << std::endl;
+        }
+
+        std::string line;
+        // Skip the header line
+        getline(file, line);
+
+        while (getline(file, line)) {
+            std::stringstream lineStream(line);
+            std::string source, destination, weightStr;
+            getline(lineStream, source, ',');
+            getline(lineStream, destination, ',');
+            getline(lineStream, weightStr, ',');
+
+            float weight = std::stof(weightStr);
+            g.addEdge(airportIndices[source], airportIndices[destination], weight);
+        }
+        file.close();
+        cout<<"E = "<<g.numEdges<<endl;
+
+        DynamicIncrementalShortestPath fw(g, numAirports);
+        REQUIRE(fw.numNodes == numAirports);
+
+        // Define test cases for random edge updates
+        for (int numUpdates : {1, 2, 5, 10, 15, 20}) {
+            SUBCASE("Random Edge Updates)") {
+                
+
+                vector<pair<uint64_t, pair<uint64_t, float>>> edgeUpdates = generateRandomEdgeUpdates(numUpdates, numAirports);
+
+                
+
+                SUBCASE("IncrementalEdgeUpdate") {
+                    INFO("Incremental Edge Update");
+                    
+                    for (auto i: edgeUpdates) {
+                        uint64_t sourceIdx = i.first;
+                        uint64_t destinationIdx = i.second.first;
+                        float weight = i.second.second;
+
+                        // Perform incremental edge update
+                        
+                        fw.incrementalUpdateEdge(sourceIdx, destinationIdx, weight);
+                
+                    }
+                    for(auto i: fw.getPath(airportIndices["DEL"], airportIndices["JFK"])){
+                        cout << i << " ";
+                    }
+                    cout<<endl;
+
+                    for (auto i: fw.getPath(airportIndices["LHR"], airportIndices["DEL"])){
+                        cout << i << " ";
+                    }
+                    cout<<endl;
+
+                }
+            }
+        }
+
+                
+
+            
+    }
+    
+    TEST_CASE("TestcaseData_N") {
+        cout<<"TestcaseData_N"<<endl;
+        
+        string filename = "../data/test_case_N.csv"; // Change this to your input file name
+        unordered_map<string, int> airportIndices;
+
+        // Populate the airport indices map
+        createAirportIndicesMap(filename, airportIndices);
+        uint64_t numAirports = airportIndices.size();
+        cout<<"N = "<<numAirports<<endl;
+        GraphAdjMatrix g(numAirports);
+
+        std::ifstream file(filename);
+        if (!file.is_open()) {
+            std::cerr << "Error opening file." << std::endl;
+        }
+
+        std::string line;
+        // Skip the header line
+        getline(file, line);
+
+        while (getline(file, line)) {
+            std::stringstream lineStream(line);
+            std::string source, destination, weightStr;
+            getline(lineStream, source, ',');
+            getline(lineStream, destination, ',');
+            getline(lineStream, weightStr, ',');
+
+            float weight = std::stof(weightStr);
+            g.addEdge(airportIndices[source], airportIndices[destination], weight);
+        }
+        file.close();
+        cout<<"E = "<<g.numEdges<<endl;
+
+        DynamicIncrementalShortestPath fw(g, numAirports);
+        REQUIRE(fw.numNodes == numAirports);
+
+        // Define test cases for random edge updates
+        for (int numUpdates : {1, 2, 5, 10, 15, 20}) {
+            SUBCASE("Random Edge Updates)") {
+                
+
+                vector<pair<uint64_t, pair<uint64_t, float>>> edgeUpdates = generateRandomEdgeUpdates(numUpdates, numAirports);
+
+
+                SUBCASE("FullEdgeUpdate") {
+                    INFO("Full Edge Update");
+                    auto timeStart = std::chrono::high_resolution_clock::now();
+                    for (auto i: edgeUpdates) {
+                        uint64_t sourceIdx = i.first;
+                        uint64_t destinationIdx = i.second.first;
+                        float weight = i.second.second;
+
+                        // Perform incremental edge update
+                        
+                        g.addEdge(sourceIdx, destinationIdx, weight);
+                
+                    }
+                    fw.computeShortestPaths();
+                    auto timeEnd = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count();
+                    cout<<"Time taken for " << numUpdates << " random edge updates: " << duration << " nanoseconds" << endl;
+                }
+                
+
+                SUBCASE("IncrementalEdgeUpdate") {
+                    INFO("Incremental Edge Update");
+                    auto timeStart = std::chrono::high_resolution_clock::now();
+                    for (auto i: edgeUpdates) {
+                        uint64_t sourceIdx = i.first;
+                        uint64_t destinationIdx = i.second.first;
+                        float weight = i.second.second;
+
+                        // Perform incremental edge update
+                        
+                        fw.incrementalUpdateEdge(sourceIdx, destinationIdx, weight);
+                
+                    }
+                    auto timeEnd = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count();
+                    cout<<"Time taken for " << numUpdates << " random edge updates: " << duration << " nanoseconds" << endl;
+                }
+            }
+        }
+
+                
+
+            
+    }
+    
+    TEST_CASE("TestcaseData_2N") {
+        cout<<"TestcaseData_2N"<<endl;
+        
+        string filename = "../data/test_case_2N.csv"; // Change this to your input file name
+        unordered_map<string, int> airportIndices;
+
+        // Populate the airport indices map
+        createAirportIndicesMap(filename, airportIndices);
+        uint64_t numAirports = airportIndices.size();
+        cout<<"N = "<<numAirports<<endl;
+        GraphAdjMatrix g(numAirports);
+
+        std::ifstream file(filename);
+        if (!file.is_open()) {
+            std::cerr << "Error opening file." << std::endl;
+        }
+
+        std::string line;
+        // Skip the header line
+        getline(file, line);
+
+        while (getline(file, line)) {
+            std::stringstream lineStream(line);
+            std::string source, destination, weightStr;
+            getline(lineStream, source, ',');
+            getline(lineStream, destination, ',');
+            getline(lineStream, weightStr, ',');
+
+            float weight = std::stof(weightStr);
+            g.addEdge(airportIndices[source], airportIndices[destination], weight);
+        }
+        file.close();
+        cout<<"E = "<<g.numEdges<<endl;
+
+        DynamicIncrementalShortestPath fw(g, numAirports);
+        REQUIRE(fw.numNodes == numAirports);
+
+        // Define test cases for random edge updates
+        for (int numUpdates : {1, 2, 5, 10, 15, 20}) {
+            SUBCASE("Random Edge Updates)") {
+                
+
+                vector<pair<uint64_t, pair<uint64_t, float>>> edgeUpdates = generateRandomEdgeUpdates(numUpdates, numAirports);
+
+
+                SUBCASE("FullEdgeUpdate") {
+                    INFO("Full Edge Update");
+                    auto timeStart = std::chrono::high_resolution_clock::now();
+                    for (auto i: edgeUpdates) {
+                        uint64_t sourceIdx = i.first;
+                        uint64_t destinationIdx = i.second.first;
+                        float weight = i.second.second;
+
+                        // Perform incremental edge update
+                        
+                        g.addEdge(sourceIdx, destinationIdx, weight);
+                
+                    }
+                    fw.computeShortestPaths();
+                    auto timeEnd = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count();
+                    cout<<"Time taken for " << numUpdates << " random edge updates: " << duration << " nanoseconds" << endl;
+                }
+                
+
+                SUBCASE("IncrementalEdgeUpdate") {
+                    INFO("Incremental Edge Update");
+                    auto timeStart = std::chrono::high_resolution_clock::now();
+                    for (auto i: edgeUpdates) {
+                        uint64_t sourceIdx = i.first;
+                        uint64_t destinationIdx = i.second.first;
+                        float weight = i.second.second;
+
+                        // Perform incremental edge update
+                        
+                        fw.incrementalUpdateEdge(sourceIdx, destinationIdx, weight);
+                
+                    }
+                    auto timeEnd = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count();
+                    cout<<"Time taken for " << numUpdates << " random edge updates: " << duration << " nanoseconds" << endl;
+                }
+            }
+        }
+
+                
+
+            
+    }
+    
+
+    TEST_CASE("TestcaseData_4N") {
+        cout<<"TestcaseData_4N"<<endl;
+        
+        string filename = "../data/test_case_4N.csv"; // Change this to your input file name
+        unordered_map<string, int> airportIndices;
+
+        // Populate the airport indices map
+        createAirportIndicesMap(filename, airportIndices);
+        uint64_t numAirports = airportIndices.size();
+        cout<<"N = "<<numAirports<<endl;
+        GraphAdjMatrix g(numAirports);
+
+        std::ifstream file(filename);
+        if (!file.is_open()) {
+            std::cerr << "Error opening file." << std::endl;
+        }
+
+        std::string line;
+        // Skip the header line
+        getline(file, line);
+
+        while (getline(file, line)) {
+            std::stringstream lineStream(line);
+            std::string source, destination, weightStr;
+            getline(lineStream, source, ',');
+            getline(lineStream, destination, ',');
+            getline(lineStream, weightStr, ',');
+
+            float weight = std::stof(weightStr);
+            g.addEdge(airportIndices[source], airportIndices[destination], weight);
+        }
+        file.close();
+        cout<<"E = "<<g.numEdges<<endl;
+
+        DynamicIncrementalShortestPath fw(g, numAirports);
+        REQUIRE(fw.numNodes == numAirports);
+
+        // Define test cases for random edge updates
+        for (int numUpdates : {1, 2, 5, 10, 15, 20}) {
+            SUBCASE("Random Edge Updates)") {
+                
+
+                vector<pair<uint64_t, pair<uint64_t, float>>> edgeUpdates = generateRandomEdgeUpdates(numUpdates, numAirports);
+
+
+                SUBCASE("FullEdgeUpdate") {
+                    INFO("Full Edge Update");
+                    auto timeStart = std::chrono::high_resolution_clock::now();
+                    for (auto i: edgeUpdates) {
+                        uint64_t sourceIdx = i.first;
+                        uint64_t destinationIdx = i.second.first;
+                        float weight = i.second.second;
+
+                        // Perform incremental edge update
+                        
+                        g.addEdge(sourceIdx, destinationIdx, weight);
+                
+                    }
+                    fw.computeShortestPaths();
+                    auto timeEnd = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count();
+                    cout<<"Time taken for " << numUpdates << " random edge updates: " << duration << " nanoseconds" << endl;
+                }
+                
+
+                SUBCASE("IncrementalEdgeUpdate") {
+                    INFO("Incremental Edge Update");
+                    auto timeStart = std::chrono::high_resolution_clock::now();
+                    for (auto i: edgeUpdates) {
+                        uint64_t sourceIdx = i.first;
+                        uint64_t destinationIdx = i.second.first;
+                        float weight = i.second.second;
+
+                        // Perform incremental edge update
+                        
+                        fw.incrementalUpdateEdge(sourceIdx, destinationIdx, weight);
+                
+                    }
+                    auto timeEnd = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count();
+                    cout<<"Time taken for " << numUpdates << " random edge updates: " << duration << " nanoseconds" << endl;
+                }
+            }
+        }
+
+                
+
+            
+    }
+    
+    TEST_CASE("TestcaseData_lgN.N") {
+        cout<<"TestcaseData_lgN.N"<<endl;
+        
+        string filename = "../data/test_case_lgN.N.csv"; // Change this to your input file name
+        unordered_map<string, int> airportIndices;
+
+        // Populate the airport indices map
+        createAirportIndicesMap(filename, airportIndices);
+        uint64_t numAirports = airportIndices.size();
+        cout<<"N = "<<numAirports<<endl;
+        GraphAdjMatrix g(numAirports);
+
+        std::ifstream file(filename);
+        if (!file.is_open()) {
+            std::cerr << "Error opening file." << std::endl;
+        }
+
+        std::string line;
+        // Skip the header line
+        getline(file, line);
+
+        while (getline(file, line)) {
+            std::stringstream lineStream(line);
+            std::string source, destination, weightStr;
+            getline(lineStream, source, ',');
+            getline(lineStream, destination, ',');
+            getline(lineStream, weightStr, ',');
+
+            float weight = std::stof(weightStr);
+            g.addEdge(airportIndices[source], airportIndices[destination], weight);
+        }
+        file.close();
+        cout<<"E = "<<g.numEdges<<endl;
+
+        DynamicIncrementalShortestPath fw(g, numAirports);
+        REQUIRE(fw.numNodes == numAirports);
+
+        // Define test cases for random edge updates
+        for (int numUpdates : {1, 2, 5, 10, 15, 20}) {
+            SUBCASE("Random Edge Updates)") {
+                
+
+                vector<pair<uint64_t, pair<uint64_t, float>>> edgeUpdates = generateRandomEdgeUpdates(numUpdates, numAirports);
+
+
+                SUBCASE("FullEdgeUpdate") {
+                    INFO("Full Edge Update");
+                    auto timeStart = std::chrono::high_resolution_clock::now();
+                    for (auto i: edgeUpdates) {
+                        uint64_t sourceIdx = i.first;
+                        uint64_t destinationIdx = i.second.first;
+                        float weight = i.second.second;
+
+                        // Perform incremental edge update
+                        
+                        g.addEdge(sourceIdx, destinationIdx, weight);
+                
+                    }
+                    fw.computeShortestPaths();
+                    auto timeEnd = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count();
+                    cout<<"Time taken for " << numUpdates << " random edge updates: " << duration << " nanoseconds" << endl;
+                }
+                
+
+                SUBCASE("IncrementalEdgeUpdate") {
+                    INFO("Incremental Edge Update");
+                    auto timeStart = std::chrono::high_resolution_clock::now();
+                    for (auto i: edgeUpdates) {
+                        uint64_t sourceIdx = i.first;
+                        uint64_t destinationIdx = i.second.first;
+                        float weight = i.second.second;
+
+                        // Perform incremental edge update
+                        
+                        fw.incrementalUpdateEdge(sourceIdx, destinationIdx, weight);
+                
+                    }
+                    auto timeEnd = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count();
+                    cout<<"Time taken for " << numUpdates << " random edge updates: " << duration << " nanoseconds" << endl;
+                }
+            }
+        }
+
+                
+
+            
+    }
+    
+
+    TEST_CASE("TestcaseData_N_lgN.N") {
+        cout<<"TestcaseData_N_lgN.N"<<endl;
+        
+        string filename = "../data/test_case_N_lgN.N.csv"; // Change this to your input file name
+        unordered_map<string, int> airportIndices;
+
+        // Populate the airport indices map
+        createAirportIndicesMap(filename, airportIndices);
+        uint64_t numAirports = airportIndices.size();
+        cout<<"N = "<<numAirports<<endl;
+        GraphAdjMatrix g(numAirports);
+
+        std::ifstream file(filename);
+        if (!file.is_open()) {
+            std::cerr << "Error opening file." << std::endl;
+        }
+
+        std::string line;
+        // Skip the header line
+        getline(file, line);
+
+        while (getline(file, line)) {
+            std::stringstream lineStream(line);
+            std::string source, destination, weightStr;
+            getline(lineStream, source, ',');
+            getline(lineStream, destination, ',');
+            getline(lineStream, weightStr, ',');
+
+            float weight = std::stof(weightStr);
+            g.addEdge(airportIndices[source], airportIndices[destination], weight);
+        }
+        file.close();
+        cout<<"E = "<<g.numEdges<<endl;
+
+        DynamicIncrementalShortestPath fw(g, numAirports);
+        REQUIRE(fw.numNodes == numAirports);
+
+        // Define test cases for random edge updates
+        for (int numUpdates : {1, 2, 5, 10, 15, 20}) {
+            SUBCASE("Random Edge Updates)") {
+                
+
+                vector<pair<uint64_t, pair<uint64_t, float>>> edgeUpdates = generateRandomEdgeUpdates(numUpdates, numAirports);
+
+
+                SUBCASE("FullEdgeUpdate") {
+                    INFO("Full Edge Update");
+                    auto timeStart = std::chrono::high_resolution_clock::now();
+                    for (auto i: edgeUpdates) {
+                        uint64_t sourceIdx = i.first;
+                        uint64_t destinationIdx = i.second.first;
+                        float weight = i.second.second;
+
+                        // Perform incremental edge update
+                        
+                        g.addEdge(sourceIdx, destinationIdx, weight);
+                
+                    }
+                    fw.computeShortestPaths();
+                    auto timeEnd = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count();
+                    cout<<"Time taken for " << numUpdates << " random edge updates: " << duration << " nanoseconds" << endl;
+                }
+                
+
+                SUBCASE("IncrementalEdgeUpdate") {
+                    INFO("Incremental Edge Update");
+                    auto timeStart = std::chrono::high_resolution_clock::now();
+                    for (auto i: edgeUpdates) {
+                        uint64_t sourceIdx = i.first;
+                        uint64_t destinationIdx = i.second.first;
+                        float weight = i.second.second;
+
+                        // Perform incremental edge update
+                        
+                        fw.incrementalUpdateEdge(sourceIdx, destinationIdx, weight);
+                
+                    }
+                    auto timeEnd = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count();
+                    cout<<"Time taken for " << numUpdates << " random edge updates: " << duration << " nanoseconds" << endl;
+                }
+            }
+        }
+
+                
+
+            
+    }
+
+    TEST_CASE("TestcaseData_N_2.N") {
+        cout<<"TestcaseData_N_2.N"<<endl;
+        
+        string filename = "../data/test_case_N_2.N.csv"; // Change this to your input file name
+        unordered_map<string, int> airportIndices;
+
+        // Populate the airport indices map
+        createAirportIndicesMap(filename, airportIndices);
+        uint64_t numAirports = airportIndices.size();
+        cout<<"N = "<<numAirports<<endl;
+        GraphAdjMatrix g(numAirports);
+
+        std::ifstream file(filename);
+        if (!file.is_open()) {
+            std::cerr << "Error opening file." << std::endl;
+        }
+
+        std::string line;
+        // Skip the header line
+        getline(file, line);
+
+        while (getline(file, line)) {
+            std::stringstream lineStream(line);
+            std::string source, destination, weightStr;
+            getline(lineStream, source, ',');
+            getline(lineStream, destination, ',');
+            getline(lineStream, weightStr, ',');
+
+            float weight = std::stof(weightStr);
+            g.addEdge(airportIndices[source], airportIndices[destination], weight);
+        }
+        file.close();
+        cout<<"E = "<<g.numEdges<<endl;
+
+        DynamicIncrementalShortestPath fw(g, numAirports);
+        REQUIRE(fw.numNodes == numAirports);
+
+        // Define test cases for random edge updates
+        for (int numUpdates : {1, 2, 5, 10, 15, 20}) {
+            SUBCASE("Random Edge Updates)") {
+                
+
+                vector<pair<uint64_t, pair<uint64_t, float>>> edgeUpdates = generateRandomEdgeUpdates(numUpdates, numAirports);
+
+
+                SUBCASE("FullEdgeUpdate") {
+                    INFO("Full Edge Update");
+                    auto timeStart = std::chrono::high_resolution_clock::now();
+                    for (auto i: edgeUpdates) {
+                        uint64_t sourceIdx = i.first;
+                        uint64_t destinationIdx = i.second.first;
+                        float weight = i.second.second;
+
+                        // Perform incremental edge update
+                        
+                        g.addEdge(sourceIdx, destinationIdx, weight);
+                
+                    }
+                    fw.computeShortestPaths();
+                    auto timeEnd = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count();
+                    cout<<"Time taken for " << numUpdates << " random edge updates: " << duration << " nanoseconds" << endl;
+                }
+                
+
+                SUBCASE("IncrementalEdgeUpdate") {
+                    INFO("Incremental Edge Update");
+                    auto timeStart = std::chrono::high_resolution_clock::now();
+                    for (auto i: edgeUpdates) {
+                        uint64_t sourceIdx = i.first;
+                        uint64_t destinationIdx = i.second.first;
+                        float weight = i.second.second;
+
+                        // Perform incremental edge update
+                        
+                        fw.incrementalUpdateEdge(sourceIdx, destinationIdx, weight);
+                
+                    }
+                    auto timeEnd = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count();
+                    cout<<"Time taken for " << numUpdates << " random edge updates: " << duration << " nanoseconds" << endl;
+                }
+            }
+        }
+
+                
+
+            
+    }
+    
+    TEST_CASE("TestcaseData_RealModified") {
+        cout<<"TestcaseData_RealModified"<<endl;
+        
+        string filename = "../data/real_modified_flights.csv"; // Change this to your input file name
+        unordered_map<string, int> airportIndices;
+
+        // Populate the airport indices map
+        createAirportIndicesMap(filename, airportIndices);
+        uint64_t numAirports = airportIndices.size();
+        cout<<"N = "<<numAirports<<endl;
+        GraphAdjMatrix g(numAirports);
+
+        std::ifstream file(filename);
+        if (!file.is_open()) {
+            std::cerr << "Error opening file." << std::endl;
+        }
+
+        std::string line;
+        // Skip the header line
+        getline(file, line);
+
+        while (getline(file, line)) {
+            std::stringstream lineStream(line);
+            std::string source, destination, weightStr;
+            getline(lineStream, source, ',');
+            getline(lineStream, destination, ',');
+            getline(lineStream, weightStr, ',');
+
+            float weight = std::stof(weightStr);
+            g.addEdge(airportIndices[source], airportIndices[destination], weight);
+        }
+        file.close();
+        cout<<"E = "<<g.numEdges<<endl;
+
+        DynamicIncrementalShortestPath fw(g, numAirports);
+        REQUIRE(fw.numNodes == numAirports);
+
+        // Define test cases for random edge updates
+        for (int numUpdates : {1, 2, 5, 10, 15, 20}) {
+            SUBCASE("Random Edge Updates)") {
+                
+
+                vector<pair<uint64_t, pair<uint64_t, float>>> edgeUpdates = generateRandomEdgeUpdates(numUpdates, numAirports);
+
+
+                SUBCASE("FullEdgeUpdate") {
+                    INFO("Full Edge Update");
+                    auto timeStart = std::chrono::high_resolution_clock::now();
+                    for (auto i: edgeUpdates) {
+                        uint64_t sourceIdx = i.first;
+                        uint64_t destinationIdx = i.second.first;
+                        float weight = i.second.second;
+
+                        // Perform incremental edge update
+                        
+                        g.addEdge(sourceIdx, destinationIdx, weight);
+                
+                    }
+                    fw.computeShortestPaths();
+                    auto timeEnd = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count();
+                    cout<<"Time taken for " << numUpdates << " random edge updates: " << duration << " nanoseconds" << endl;
+                }
+                
+
+                SUBCASE("IncrementalEdgeUpdate") {
+                    INFO("Incremental Edge Update");
+                    auto timeStart = std::chrono::high_resolution_clock::now();
+                    for (auto i: edgeUpdates) {
+                        uint64_t sourceIdx = i.first;
+                        uint64_t destinationIdx = i.second.first;
+                        float weight = i.second.second;
+
+                        // Perform incremental edge update
+                        
+                        fw.incrementalUpdateEdge(sourceIdx, destinationIdx, weight);
+                
+                    }
+                    auto timeEnd = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count();
+                    cout<<"Time taken for " << numUpdates << " random edge updates: " << duration << " nanoseconds" << endl;
+                }
+            }
+        }
+
+                
+
+            
+    }
+    
+
+    TEST_CASE("TestcaseData_RealModified2") {
+        cout<<"TestcaseData_RealModified2"<<endl;
+        
+        string filename = "../data/inf-USAir97.mtx"; // Change this to your input file name
+        unordered_map<string, int> airportIndices;
+
+        // Populate the airport indices map
+        createAirportIndicesMap(filename, airportIndices);
+        uint64_t numAirports = airportIndices.size();
+        cout<<"N = "<<numAirports<<endl;
+        GraphAdjMatrix g(numAirports);
+
+        std::ifstream file(filename);
+        if (!file.is_open()) {
+            std::cerr << "Error opening file." << std::endl;
+        }
+
+        std::string line;
+        // Skip the header line
+        getline(file, line);
+
+        while (getline(file, line)) {
+            std::stringstream lineStream(line);
+            std::string source, destination, weightStr;
+            getline(lineStream, source, ' ');
+            getline(lineStream, destination, ' ');
+            getline(lineStream, weightStr);
+
+            float weight = std::stof(weightStr);
+            g.addEdge(airportIndices[source], airportIndices[destination], weight);
+        }
+        file.close();
+        cout<<"E = "<<g.numEdges<<endl;
+
+        DynamicIncrementalShortestPath fw(g, numAirports);
+        REQUIRE(fw.numNodes == numAirports);
+
+        // Define test cases for random edge updates
+        for (int numUpdates : {1, 2, 5, 10, 15, 20}) {
+            SUBCASE("Random Edge Updates)") {
+                
+
+                vector<pair<uint64_t, pair<uint64_t, float>>> edgeUpdates = generateRandomEdgeUpdates(numUpdates, numAirports);
+
+
+                SUBCASE("FullEdgeUpdate") {
+                    INFO("Full Edge Update");
+                    auto timeStart = std::chrono::high_resolution_clock::now();
+                    for (auto i: edgeUpdates) {
+                        uint64_t sourceIdx = i.first;
+                        uint64_t destinationIdx = i.second.first;
+                        float weight = i.second.second;
+
+                        // Perform incremental edge update
+                        
+                        g.addEdge(sourceIdx, destinationIdx, weight);
+                
+                    }
+                    fw.computeShortestPaths();
+                    auto timeEnd = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count();
+                    cout<<"Time taken for " << numUpdates << " random edge updates: " << duration << " nanoseconds" << endl;
+                }
+                
+
+                SUBCASE("IncrementalEdgeUpdate") {
+                    INFO("Incremental Edge Update");
+                    auto timeStart = std::chrono::high_resolution_clock::now();
+                    for (auto i: edgeUpdates) {
+                        uint64_t sourceIdx = i.first;
+                        uint64_t destinationIdx = i.second.first;
+                        float weight = i.second.second;
+
+                        // Perform incremental edge update
+                        
+                        fw.incrementalUpdateEdge(sourceIdx, destinationIdx, weight);
+                
+                    }
+                    auto timeEnd = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count();
+                    cout<<"Time taken for " << numUpdates << " random edge updates: " << duration << " nanoseconds" << endl;
+                }
+            }
+        }
+
+                
+
+            
+    }
+   
 }

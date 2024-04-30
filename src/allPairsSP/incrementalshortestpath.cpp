@@ -1,4 +1,4 @@
-#ifndef INCREMENTALSHORTESTPATH
+
 #include <fstream>
 #include <iostream>
 #include <limits>
@@ -191,40 +191,61 @@ class DynamicIncrementalShortestPath {
     }
   }
 
-  void incrementalInsertNode(uint64_t z, vector<float> z_in,
-                             vector<float> z_out) {
-    numNodes++;
 
-    dist.resize(numNodes, vector<float>(numNodes, INF));
-    predecessors.resize(numNodes, vector<int64_t>(numNodes, -1));
+  void incrementalInsertNode(uint64_t z, vector<float> z_in, vector<float> z_out) {
+    // Increase the size of the distance matrix to accommodate the new node
+    
+    for (auto& row : dist) {
+      row.push_back(INF);
+    }
+    dist.push_back(vector<float>(numNodes + 1, INF));
+    predecessors.push_back(vector<int64_t>(numNodes + 1, -1));
 
-    for (uint64_t i = 0; i < numNodes - 1; ++i) {
+    // Set the distances from and to the new node
+    for (uint64_t i = 0; i < numNodes; ++i) {
       dist[i][z] = z_out[i];
       dist[z][i] = z_in[i];
-      dist[i].push_back(INF);
-      predecessors[i].push_back(-1);
+      graph.numEdges+=2;
     }
     dist[z][z] = 0;
-    predecessors[z][z] = -1;
 
-    for (uint64_t i = 0; i < numNodes; ++i) {
-      dist[z][i] = z_in[i];
-      dist[i][z] = z_out[i];
-      if (z_in[i] != INF) {
-        predecessors[z][i] = z;
+    numNodes++;  // Increment the number of nodes in the graph
+
+    // Initialize a priority queue 
+    priority_queue<pair<float, uint64_t>, vector<pair<float, uint64_t>>,
+                   greater<pair<float, uint64_t>>>
+        pq;
+    pq.push({0, z});  // Start from the new node
+
+    // Perform Dijkstra's algorithm to update distances from the new node
+    while (!pq.empty()) {
+      auto [d, u] = pq.top();
+      pq.pop();
+
+      if (d > dist[z][u]) {
+        continue;  // Skip if we have found a better path already
       }
-      if (z_out[i] != INF) {
-        predecessors[i][z] = i;
+
+      for (uint64_t v = 0; v < numNodes; ++v) {
+        if (dist[u][v] < INF) {
+          float new_dist = d + dist[u][v];
+          if (new_dist < dist[z][v]) {
+            dist[z][v] = new_dist;
+            pq.push({new_dist, v});
+            predecessors[z][v] = u;
+          }
+        }
       }
     }
 
-    // Correcting the loop
+    // Now update the distances between all pairs of nodes considering z as an
+    // intermediate node
     for (uint64_t i = 0; i < numNodes; ++i) {
       for (uint64_t j = 0; j < numNodes; ++j) {
         if (dist[i][z] < INF && dist[z][j] < INF) {
-          float potentialNewDist = dist[i][z] + dist[z][j];
-          if (potentialNewDist < dist[i][j]) {
-            dist[i][j] = potentialNewDist;
+          float new_dist = dist[i][z] + dist[z][j];
+          if (new_dist < dist[i][j]) {
+            dist[i][j] = new_dist;
             predecessors[i][j] = predecessors[z][j];
           }
         }
@@ -233,67 +254,65 @@ class DynamicIncrementalShortestPath {
   }
 };
 
-// int main() {
-//   // Map from airport codes to numeric indices
-//   unordered_map<string, uint64_t> airportIndices = {
-//       {"JFK", 0}, {"LAX", 1}, {"ATL", 2}, {"ORD", 3},
-//       {"LHR", 4}, {"CDG", 5}, {"DXB", 6}};
+int main() {
+  // Map from airport codes to numeric indices
+  unordered_map<string, uint64_t> airportIndices = {
+      {"JFK", 0}, {"LAX", 1}, {"ATL", 2}, {"ORD", 3},
+      {"LHR", 4}, {"CDG", 5}, {"DXB", 6}};
 
-//   uint64_t numAirports = airportIndices.size();
-//   GraphAdjMatrix graph(numAirports);  // Assume GraphAdjMatrix manages an
-//                                       // adjacency matrix internally
+  uint64_t numAirports = airportIndices.size();
+  GraphAdjMatrix graph(numAirports);  // Assume GraphAdjMatrix manages an
+                                      // adjacency matrix internally
 
-//   // Open the CSV file
-//   ifstream file("flights.csv");
-//   if (!file.is_open()) {
-//     cerr << "Error opening file." << endl;
-//     return 1;
-//   }
+  // Open the CSV file
+  ifstream file("flights.csv");
+  if (!file.is_open()) {
+    cerr << "Error opening file." << endl;
+    return 1;
+  }
 
-//   string line;
-//   // Skip the header line if necessary
-//   getline(file, line);
+  string line;
+  // Skip the header line if necessary
+  getline(file, line);
 
-//   while (getline(file, line)) {
-//     stringstream lineStream(line);
-//     string source, destination, weightStr;
-//     getline(lineStream, source, ',');
-//     getline(lineStream, destination, ',');
-//     getline(lineStream, weightStr, ',');
+  while (getline(file, line)) {
+    stringstream lineStream(line);
+    string source, destination, weightStr;
+    getline(lineStream, source, ',');
+    getline(lineStream, destination, ',');
+    getline(lineStream, weightStr, ',');
 
-//     float weight = stof(weightStr);
-//     // Add edges to the graph based on read data
-//     graph.addEdge(airportIndices[source], airportIndices[destination], weight);
-//   }
-//   file.close();  // Close the file after reading
+    float weight = stof(weightStr);
+    // Add edges to the graph based on read data
+    graph.addEdge(airportIndices[source], airportIndices[destination], weight);
+  }
+  file.close();  // Close the file after reading
 
-//   // Instantiate the Floyd-Warshall algorithm with the constructed graph
-//   DynamicIncrementalShortestPath sp(graph, numAirports);
+  // Instantiate the Floyd-Warshall algorithm with the constructed graph
+  DynamicIncrementalShortestPath sp(graph, numAirports);
 
-//   // Compute the initial shortest paths
-//   cout << "Computing shortest paths:" << endl;
-//   sp.computeShortestPaths();
-//   sp.printShortestPaths();
+  // Compute the initial shortest paths
+  cout << "Computing shortest paths:" << endl;
+  sp.computeShortestPaths();
+  sp.printShortestPaths();
 
-//   // Example of edge update
-//   cout
-//       << "\nShortest paths after edge update (from JFK to LAX, new weight 2.5):"
-//       << endl;
-//   sp.incrementalUpdateEdge(airportIndices["JFK"], airportIndices["LAX"], 2.5f);
-//   sp.printShortestPaths();
+  // Example of edge update
+  cout
+      << "\nShortest paths after edge update (from JFK to LAX, new weight 2.5):"
+      << endl;
+  sp.incrementalUpdateEdge(airportIndices["JFK"], airportIndices["LAX"], 2.5f);
+  sp.printShortestPaths();
 
-//   // Example of adding a new node
-//   float inf = std::numeric_limits<float>::infinity();
-//   vector<float> z_in(numAirports, inf);
-//   vector<float> z_out(numAirports, inf);
-//   z_in[airportIndices["JFK"]] = 5.0;   // Example distance from new node to JFK
-//   z_out[airportIndices["LAX"]] = 5.5;  // Example distance from LAX to new node
+  // Example of adding a new node
+  float inf = std::numeric_limits<float>::infinity();
+  vector<float> z_in(numAirports, inf);
+  vector<float> z_out(numAirports, inf);
+  z_in[airportIndices["JFK"]] = 5.0;   // Example distance from new node to JFK
+  z_out[airportIndices["LAX"]] = 5.5;  // Example distance from LAX to new node
 
-//   cout << "\nAdding a new node and updating shortest paths:" << endl;
-//   sp.incrementalInsertNode(numAirports, z_in, z_out);
-//   sp.printShortestPaths();
+  cout << "\nAdding a new node and updating shortest paths:" << endl;
+  sp.incrementalInsertNode(numAirports, z_in, z_out);
+  sp.printShortestPaths();
 
-//   return 0;
-// }
-
-#endif
+  return 0;
+}

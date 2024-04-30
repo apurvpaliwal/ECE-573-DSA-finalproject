@@ -191,131 +191,66 @@ class DynamicIncrementalShortestPath {
     }
   }
 
-//   void incrementalNodeInsertion( int newNode, vector<float> z_in, vector<float> z_out) {
-//     int numNodes = numNodes;
-
-//     // Step 1: Identify affected sources S(z) using a priority queue
-//     vector<bool> visited(numNodes, false);
-//     vector<int> sourceSet;
-//     priority_queue<pair<float, int>, vector<pair<float, int>>, greater<pair<float, int>>> pq;
-
-//     pq.push({0.0, newNode}); // Start from node z with distance 0
-
-//     while (!pq.empty()) {
-//         auto [w_new, current] = pq.top();
-//         pq.pop();
-
-//         if (visited[current])
-//             continue;
-
-//         visited[current] = true;
-//         sourceSet.push_back(current);
-
-//         // Explore neighbors of the current node
-//         for (int v = 0; v < numNodes; ++v) {
-//           float weight = dist[current][v]; // Get weight of edge (current, v)
-
-//           // Check if there's an edge from current to v and v is not visited
-//           if (weight < INF && !visited[v] && w_new + weight < 0) {
-//               pq.push({w_new + weight, v});
-//           }
-// }
-//     }
-
-//     // Step 2: Update distances for affected target nodes
-//     vector<vector<float>> d0(numNodes, vector<float>(numNodes, INF));
-
-//     // Initialize distances from/to the new node
-//     for (int x : sourceSet) {
-//         d0[x][newNode] = 1.0; // d0(x, z) = 1 for all x in S(z)
-//         d0[newNode][x] = 1.0; // d0(z, x) = 1 for all x in S(z)
-//     }
-
-//     // Process each affected target node y
-//     for (int y = 0; y < numNodes; ++y) {
-//         if (y == newNode)
-//             continue;
-
-//         priority_queue<pair<float, int>, vector<pair<float, int>>, greater<pair<float, int>>> pq2;
-//         pq2.push({0.0, y}); // Start from node y with distance 0
-
-//         while (!pq2.empty()) {
-//             auto [dist, u] = pq2.top();
-//             pq2.pop();
-
-//             if (dist > d0[u][y])
-//                 continue;
-
-//             // Explore neighbors of node u
-//             for (auto& neighbor : G.adjList[u]) {
-//                 int v = neighbor.first;
-//                 float weight = neighbor.second;
-
-//                 if (dist + weight < d0[v][y]) {
-//                     d0[v][y] = dist + weight;
-//                     pq2.push({dist + weight, v});
-//                 }
-//             }
-//         }
-//     }
-
-//     // Step 3: Finalize distance updates in the graph
-//     for (int x = 0; x < numNodes; ++x) {
-//         for (int y = 0; y < numNodes; ++y) {
-//             incrementalUpdateEdge(x, y, min(d0[x][y], min(d0[x][newNode] + d0[newNode][y], d0[y][x] + d0[x][y])));
-//         }
-//     }
-// }
 
   void incrementalInsertNode(uint64_t z, vector<float> z_in, vector<float> z_out) {
-      // Increment the number of nodes in the graph first
-      numNodes++;
+    // Increase the size of the distance matrix to accommodate the new node
+    
+    for (auto& row : dist) {
+      row.push_back(INF);
+    }
+    dist.push_back(vector<float>(numNodes + 1, INF));
+    predecessors.push_back(vector<int64_t>(numNodes + 1, -1));
 
-      // Resize the distance and predecessors matrices to accommodate the new node
-      dist.resize(numNodes, vector<float>(numNodes, INF));
-      predecessors.resize(numNodes, vector<int64_t>(numNodes, -1));
+    // Set the distances from and to the new node
+    for (uint64_t i = 0; i < numNodes; ++i) {
+      dist[i][z] = z_out[i];
+      dist[z][i] = z_in[i];
+      graph.numEdges+=2;
+    }
+    dist[z][z] = 0;
 
-      // Initialize distances for the new node and update direct connections
-      for (uint64_t i = 0; i < numNodes - 1; ++i) {
-          dist[i][z] = z_out[i];   // Outgoing from existing nodes to new node
-          dist[z][i] = z_in[i];    // Incoming from new node to existing nodes
-          dist[i].push_back(INF);  // Expand existing rows with INF
-          predecessors[i].push_back(-1);  // No direct predecessor to new node
-      }
-      dist[z][z] = 0;  // Distance to itself is zero
+    numNodes++;  // Increment the number of nodes in the graph
 
-      // Initialize the last row and column for the new node
-      for (uint64_t i = 0; i < numNodes; ++i) {
-          dist[z][i] = z_in[i];
-          dist[i][z] = z_out[i];
-          if (z_in[i] != INF) {
-              predecessors[z][i] = z;
-          }
-          if (z_out[i] != INF) {
-              predecessors[i][z] = i;
-          }
-      }
+    // Initialize a priority queue 
+    priority_queue<pair<float, uint64_t>, vector<pair<float, uint64_t>>,
+                   greater<pair<float, uint64_t>>>
+        pq;
+    pq.push({0, z});  // Start from the new node
 
-      // Identify affected sources and targets based on new distances
-      unordered_set<uint64_t> affected_sources;
-      for (uint64_t i = 0; i < numNodes - 1; ++i) {
-          if (dist[i][z] < INF) {  // If there's a path from i to z
-              affected_sources.insert(i);
-          }
+    // Perform Dijkstra's algorithm to update distances from the new node
+    while (!pq.empty()) {
+      auto [d, u] = pq.top();
+      pq.pop();
+
+      if (d > dist[z][u]) {
+        continue;  // Skip if we have found a better path already
       }
 
-      // Use the new node as an intermediate to update all paths
-      for (uint64_t i = 0; i < numNodes; ++i) {
-          for (uint64_t j = 0; j < numNodes; ++j) {
-              if (dist[i][z] < INF && dist[z][j] < INF) {
-                  float potentialNewDist = dist[i][z] + dist[z][j];
-                  if (potentialNewDist < dist[i][j]) {
-                      dist[i][j] = potentialNewDist;
-                      predecessors[i][j] = predecessors[z][j];
-                  }
-              }
+      for (uint64_t v = 0; v < numNodes; ++v) {
+        if (dist[u][v] < INF) {
+          float new_dist = d + dist[u][v];
+          if (new_dist < dist[z][v]) {
+            dist[z][v] = new_dist;
+            pq.push({new_dist, v});
+            predecessors[z][v] = u;
           }
+        }
       }
+    }
+
+    // Now update the distances between all pairs of nodes considering z as an
+    // intermediate node
+    for (uint64_t i = 0; i < numNodes; ++i) {
+      for (uint64_t j = 0; j < numNodes; ++j) {
+        if (dist[i][z] < INF && dist[z][j] < INF) {
+          float new_dist = dist[i][z] + dist[z][j];
+          if (new_dist < dist[i][j]) {
+            dist[i][j] = new_dist;
+            predecessors[i][j] = predecessors[z][j];
+          }
+        }
+      }
+    }
   }
 };
 
